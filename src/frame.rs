@@ -1,4 +1,9 @@
-use std::io::{self, Cursor, ErrorKind, Read, Write};
+use std::future::Future;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, BufReader};
+use crate::tokio::io::AsyncWriteExt;
+use std::io::{self, Cursor, ErrorKind};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use dark_std::errors::Error;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -28,11 +33,11 @@ pub struct Frame {
 
 impl Frame {
     /// decode a frame from the reader
-    pub fn decode_from<R: Read>(r: &mut R) -> io::Result<Self> {
-        let id = r.read_u64::<BigEndian>()?;
+    pub async fn decode_from<R: AsyncRead+Unpin>(r: &mut R) -> io::Result<Self> {
+        let id = r.read_u64().await?;
         info!("decode id = {:?}", id);
 
-        let len = r.read_u64::<BigEndian>()? + 16;
+        let len = r.read_u64().await? + 16;
         info!("decode len = {:?}", len);
 
         if len > FRAME_MAX_LEN {
@@ -43,12 +48,12 @@ impl Frame {
 
         let mut data = Vec::with_capacity(len as usize);
         unsafe { data.set_len(len as usize) }; // avoid one memset
-        r.read_exact(&mut data[16..])?;
+        r.read_exact(&mut data[16..]).await?;
 
         // blow can be skipped, we don't need them in the buffer
         let mut cursor = Cursor::new(data);
-        cursor.write_u64::<BigEndian>(id).unwrap();
-        cursor.write_u64::<BigEndian>(len - 16).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 16).unwrap();
         let data = cursor.into_inner();
 
         Ok(Frame { id, data })
@@ -79,9 +84,9 @@ impl Frame {
         // skip the frame head
         r.set_position(16);
 
-        let ty = r.read_u8()?;
+        let ty = ReadBytesExt::read_u8(&mut r)?;
         // we don't need to check len here, frame is checked already
-        let len = r.read_u64::<BigEndian>()? as usize;
+        let len = ReadBytesExt::read_u64::<BigEndian>(&mut r)? as usize;
 
         let buf = r.into_inner();
         let data = &buf[25..len + 25];
@@ -132,25 +137,45 @@ impl ReqBuf {
 
         // write from start
         cursor.set_position(0);
-        cursor.write_u64::<BigEndian>(id).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
         info!("encode id = {:?}", id);
 
         // adjust the data length
-        cursor.write_u64::<BigEndian>(len - 16).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len - 16).unwrap();
         info!("encode len = {:?}", len);
 
         cursor.into_inner()
     }
 }
 
-impl Write for ReqBuf {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+impl AsyncWrite for ReqBuf {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
+        let mut p = Box::pin(AsyncWriteExt::write(&mut self.0, buf));
+        loop{
+            match Pin::new(&mut p).poll(cx){
+                Poll::Ready(v) => {
+                    match v{
+                        Ok(v) => {
+                            return Poll::Ready(Ok(v));
+                        }
+                        Err(e) => {
+                            return Poll::Ready(Err(e));
+                        }
+                    }
+                }
+                Poll::Pending => {}
+            }
+        }
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        Poll::Ready(Ok(()))
     }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
 }
 
 /// rsp frame buffer that can be serialized into
@@ -175,7 +200,7 @@ impl RspBuf {
     }
 
     /// convert self into raw buf that can be send as a frame
-    pub fn finish(self, id: u64, ret: Result<(), WireError>) -> Vec<u8> {
+    pub async fn finish(self, id: u64, ret: Result<(), WireError>) -> Vec<u8> {
         let mut cursor = self.0;
         let dummy = Vec::new();
 
@@ -195,17 +220,17 @@ impl RspBuf {
 
         // write from start
         cursor.set_position(0);
-        cursor.write_u64::<BigEndian>(id).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
         info!("encode id = {:?}", id);
 
         // adjust the data length
-        cursor.write_u64::<BigEndian>(len + 9).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len + 9).unwrap();
         info!("encode len = {:?}", len);
 
         // write the type
-        cursor.write_u8(ty).unwrap();
+        WriteBytesExt::write_u8(&mut cursor, ty).unwrap();
         // write the len
-        cursor.write_u64::<BigEndian>(len).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len).unwrap();
         // write the data into the writer
         match ty {
             0 => {} // the normal ret already writed
@@ -214,7 +239,7 @@ impl RspBuf {
             }
             1 | 2 | 3 => {
                 cursor.get_mut().resize(len as usize + 25, 0);
-                cursor.write_all(data).unwrap();
+                cursor.write_all(data).await.unwrap();
             }
             _ => unreachable!("unkown rsp type"),
         }
@@ -223,13 +248,32 @@ impl RspBuf {
     }
 }
 
-impl Write for RspBuf {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+impl AsyncWrite for RspBuf {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
+        let mut p=Box::pin(AsyncWriteExt::write(&mut self.0, buf));
+        loop{
+            match Pin::new(&mut p).poll(cx){
+                Poll::Ready(v) => {
+                    match v{
+                        Ok(v) => {
+                            return Poll::Ready(Ok(v));
+                        }
+                        Err(e) => {
+                            return Poll::Ready(Err(e));
+                        }
+                    }
+                }
+                Poll::Pending => {}
+            }
+        }
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        Poll::Ready(Ok(()))
     }
 }
 

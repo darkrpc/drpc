@@ -39,13 +39,13 @@ impl<C> LoadBalance<C> where C: RpcClient {
     }
 
     /// put client,and return old client
-    pub fn put(&self, arg: C) -> Option<Arc<C>> {
+    pub async fn put(&self, arg: C) -> Option<Arc<C>> {
         let mut arg = Some(Arc::new(arg));
         let addr = arg.as_deref().unwrap().addr();
         let mut idx = 0;
         for x in &self.rpc_clients {
             if x.addr().eq(addr) {
-                let rm = self.rpc_clients.remove(idx);
+                let rm = self.rpc_clients.remove(idx).await;
                 if rm.is_none() {
                     self.rpc_clients.push(arg.unwrap());
                     return None;
@@ -60,11 +60,11 @@ impl<C> LoadBalance<C> where C: RpcClient {
         return None;
     }
 
-    pub fn remove(&self, address: &str) -> Option<Arc<C>> {
+    pub async fn remove(&self, address: &str) -> Option<Arc<C>> {
         let mut idx = 0;
         for x in &self.rpc_clients {
             if x.addr().eq(address) {
-                return self.rpc_clients.remove(idx);
+                return self.rpc_clients.remove(idx).await;
             }
             idx += 1;
         }

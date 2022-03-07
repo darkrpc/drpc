@@ -1,6 +1,6 @@
 use std::any::Any;
 use dark_std::err;
-use std::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 use crate::codec::{BinCodec, Codec, Codecs};
 use crate::stub::ServerStub;
 use std::io::Read;
@@ -32,8 +32,8 @@ impl Default for Server {
 
 impl Server {
     #[inline]
-    pub fn call(&self, stream: TcpStream) {
-        self.stub.call(&self.handles, &self.codec, stream);
+    pub async fn call(&self, stream: TcpStream) {
+        self.stub.call(&self.handles, &self.codec, stream).await;
     }
 }
 
@@ -99,8 +99,8 @@ impl Server {
     /// }
     ///
     /// ```
-    pub fn register<H: 'static>(&mut self, name: &str, handle: H) where H: Stub {
-        self.handles.insert(name.to_owned(), Box::new(handle));
+    pub async fn register<H: 'static>(&mut self, name: &str, handle: H) where H: Stub {
+        self.handles.insert(name.to_owned(), Box::new(handle)).await;
     }
 
     /// register a func into server
@@ -118,25 +118,22 @@ impl Server {
     ///         Ok(1)
     ///     });
     /// ```
-    pub fn register_fn<Req: DeserializeOwned + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F) where F: Fn(Req) -> Result<Resp> {
-        self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f)));
+    pub async fn register_fn<Req: DeserializeOwned + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F) where F: Fn(Req) -> Result<Resp> {
+        self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f))).await;
     }
 
-    pub fn serve<A>(self, addr: A) where A: ToSocketAddrs {
-        let listener = TcpListener::bind(addr).unwrap();
+    pub async fn serve<A>(self, addr: A) where A: tokio::net::ToSocketAddrs {
+        let listener = TcpListener::bind(addr).await.unwrap();
         println!(
             "Starting tcp echo server on {:?}",
             listener.local_addr().unwrap(),
         );
         let server = Arc::new(self);
-        for stream in listener.incoming() {
-            match stream {
-                Ok(s) => {
-                    let server = server.clone();
-                    co!(move || server.call(s));
-                }
-                Err(e) => error!("err = {:?}", e),
-            }
+        for (stream,addr) in listener.accept().await {
+            let server = server.clone();
+            tokio::spawn(async move {
+                 server.call(stream).await;
+            });
         }
     }
 }

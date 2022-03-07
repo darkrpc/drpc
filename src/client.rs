@@ -19,9 +19,9 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn dial(addr: &str) -> std::io::Result<Self> {
+    pub async fn dial(addr: &str) -> std::io::Result<Self> {
         let address = addr.to_string();
-        let stream = TcpStream::connect(addr)?;
+        let stream = TcpStream::connect(addr).await?;
         Ok(Self {
             addr: address,
             codec: Codecs::BinCodec(BinCodec {}),

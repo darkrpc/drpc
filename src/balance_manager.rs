@@ -76,7 +76,7 @@ impl BalanceManger {
             if let Some(clients) = balance {
                 for addr in &addrs {
                     if !clients.contains(addr) {
-                        let c = Client::dial(addr)?;
+                        let c = Client::dial(addr).await?;
                         clients.put(c);
                     }
                 }
@@ -92,7 +92,7 @@ impl BalanceManger {
             } else {
                 let mut clients = LoadBalance::new();
                 for x in addrs {
-                    let c = Client::dial(&x)?;
+                    let c = Client::dial(&x).await?;
                     clients.put(c);
                 }
                 self.clients.insert(s, clients);
@@ -113,7 +113,7 @@ impl BalanceManger {
 
     pub async fn spawn_push(&self,service: String, addr: String) {
         loop {
-            let r = self.fetcher.push(service.clone(),addr.clone(),self.config.interval.clone()*2);
+            let r = self.fetcher.push(service.clone(),addr.clone(),self.config.interval.clone()*2).await;
             if r.is_err() {
                 log::error!("service fetch fail:{}",r.err().unwrap());
             }
@@ -129,7 +129,7 @@ impl BalanceManger {
                 Err(err!("no service '{}' find!",service))
             }
             Some(c) => {
-                c.call(func, arg)
+                c.call(func, arg).await
             }
         };
     }
@@ -142,7 +142,7 @@ impl BalanceManger {
                 Err(err!("no service '{}' find!",service))
             }
             Some(c) => {
-                c.call(func, arg)
+                c.call(func, arg).await
             }
         };
     }
