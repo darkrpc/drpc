@@ -37,11 +37,11 @@ impl Server {
     }
 }
 
-pub trait Stub {
+pub trait Stub:Sync+Send {
     fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>>;
 }
 
-pub trait Handler: Stub {
+pub trait Handler: Stub+Sync+Send {
     type Req: DeserializeOwned;
     type Resp: Serialize;
     fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>> {
@@ -62,6 +62,9 @@ impl<H: Handler> Stub for H {
 pub struct HandleFn<Req: DeserializeOwned, Resp: Serialize> {
     pub f: Box<dyn Fn(Req) -> Result<Resp>>,
 }
+
+unsafe impl <Req: DeserializeOwned, Resp: Serialize>Sync for HandleFn<Req,Resp>{}
+unsafe impl <Req: DeserializeOwned, Resp: Serialize>Send for HandleFn<Req,Resp>{}
 
 impl<Req: DeserializeOwned, Resp: Serialize> Handler for HandleFn<Req, Resp> {
     type Req = Req;

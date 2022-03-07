@@ -9,14 +9,18 @@ use serde::Serialize;
 use crate::balance::RpcClient;
 
 use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub struct Client {
     pub addr: String,
     pub codec: Codecs,
     pub stub: ClientStub,
-    pub stream: RefCell<TcpStream>,
+    pub stream: Mutex<TcpStream>,
 }
+
+unsafe impl Send for Client{}
+unsafe impl Sync for Client {}
 
 impl Client {
     pub async fn dial(addr: &str) -> std::io::Result<Self> {
@@ -26,7 +30,7 @@ impl Client {
             addr: address,
             codec: Codecs::BinCodec(BinCodec {}),
             stub: ClientStub::new(),
-            stream: RefCell::new(stream),
+            stream: Mutex::new(stream),
         })
     }
 
@@ -42,7 +46,8 @@ impl Client {
     }
 
     pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
-        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut *self.stream.borrow_mut()).await?;
+        let mut stream = self.stream.lock().await;
+        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut stream).await?;
         return Ok(resp);
     }
 }
