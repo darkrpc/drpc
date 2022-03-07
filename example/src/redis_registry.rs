@@ -7,12 +7,12 @@ extern crate redis;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
-use fast_log::sleep;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
 use drpc::server::Server;
 use dark_std::errors::Result;
 use redis::Commands;
 use tokio::sync::Mutex;
+use tokio::time::sleep;
 
 pub struct RedisCenter {
     server_prefix: String,
@@ -62,12 +62,12 @@ async fn main() {
     tokio::spawn(async move {
         spawn_server(m_clone).await;
     });
-    sleep(Duration::from_secs(2));
+    sleep(Duration::from_secs(2)).await;
     let m_clone = m.clone();
     tokio::spawn(async move {
         m_clone.spawn_pull().await;
     });
-    sleep(Duration::from_secs(2));
+    sleep(Duration::from_secs(2)).await;
     let r = m.call::<i32, i32>("test", "handle", 1).await;
     println!("-> test.handle(1)\n<- {}", r.unwrap());
 }
@@ -79,6 +79,6 @@ async fn spawn_server(manager: Arc<BalanceManger>) {
     let mut s = Server::default();
     s.register_fn("handle", |arg: i32| -> Result<i32>{
         Ok(1)
-    });
-    s.serve("127.0.0.1:10000");
+    }).await;
+    s.serve("127.0.0.1:10000").await;
 }
