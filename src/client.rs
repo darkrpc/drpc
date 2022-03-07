@@ -1,13 +1,14 @@
 use std::cell::RefCell;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
-use mco::net::TcpStream;
-use codec::{BinCodec, Codec, Codecs};
-use stub::ClientStub;
-use mco::std::errors::Result;
+use crate::codec::{BinCodec, Codec, Codecs};
+use crate::stub::ClientStub;
+use dark_std::errors::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use balance::RpcClient;
+use crate::balance::RpcClient;
+
+use tokio::net::TcpStream;
 
 #[derive(Debug)]
 pub struct Client {
@@ -40,8 +41,8 @@ impl Client {
         &self.stub.timeout
     }
 
-    pub fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
-        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut *self.stream.borrow_mut())?;
+    pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
+        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut *self.stream.borrow_mut()).await?;
         return Ok(resp);
     }
 }

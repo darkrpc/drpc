@@ -2,6 +2,8 @@ extern crate serde;
 extern crate tokio;
 
 #[macro_use]
+extern crate async_trait;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate bincode;

@@ -2,18 +2,16 @@ use std::io::{BufReader, Read, Write};
 use std::ops::Index;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
+use dark_std::err;
 use log::{error, debug};
-use mco::{co, err};
-use mco::coroutine::spawn;
-use mco::net::TcpStream;
-use mco::std::errors::Result;
-use mco::std::map::SyncHashMap;
+use dark_std::errors::Result;
+use dark_std::sync::map_hash::SyncHashMap;
 use serde::de::DeserializeOwned;
 use serde::{Serialize, Deserialize};
-use codec::{Codec, Codecs};
-use frame::{Frame, ReqBuf, RspBuf, WireError};
-use server::Stub;
-use mco::std::errors::Error;
+use crate::codec::{Codec, Codecs};
+use crate::frame::{Frame, ReqBuf, RspBuf, WireError};
+use crate::server::Stub;
+use dark_std::errors::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PackReq {
@@ -39,7 +37,7 @@ impl ClientStub {
         }
     }
 
-    pub fn call<Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &Codecs, stream: &mut TcpStream) -> Result<Resp> {
+    pub async fn call<Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &Codecs, stream: &mut TcpStream) -> Result<Resp> {
         let arg = PackReq {
             m: method.to_string(),
             body: codec.encode(arg)?,

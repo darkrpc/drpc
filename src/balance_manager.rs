@@ -1,20 +1,21 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use mco::{co, err};
-use mco::coroutine::sleep;
-use balance::{LoadBalance, LoadBalanceType};
-use client::Client;
-use mco::std::errors::Result;
-use mco::std::sync::{Mutex, SyncHashMap};
+use dark_std::err;
+use crate::balance::{LoadBalance, LoadBalanceType};
+use crate::client::Client;
+use dark_std::errors::Result;
+use dark_std::sync::{SyncHashMap};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::time::sleep;
 
 /// to fetch remote service addr list
+#[async_trait]
 pub trait RegistryCenter: Sync + Send {
     ///fetch [service]Vec<addr>
-    fn pull(&self) -> HashMap<String, Vec<String>>;
-    fn push(&self, service: String, addr: String, ex:Duration) -> Result<()>;
+    async fn pull(&self) -> HashMap<String, Vec<String>>;
+    async fn push(&self, service: String, addr: String, ex:Duration) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -65,8 +66,8 @@ impl BalanceManger {
     }
 
     /// fetch addr list
-    pub fn pull(&self) -> Result<()> {
-        let addrs = self.fetcher.pull();
+    pub async fn pull(&self) -> Result<()> {
+        let addrs = self.fetcher.pull().await;
         if addrs.is_empty(){
             self.clients.clear();
         }
@@ -100,27 +101,27 @@ impl BalanceManger {
         return Ok(());
     }
 
-    pub fn spawn_pull(&self) {
+    pub async fn spawn_pull(&self) {
         loop {
-            let r = self.pull();
+            let r = self.pull().await;
             if r.is_err() {
                 log::error!("service fetch fail:{}",r.err().unwrap());
             }
-            sleep(self.config.interval);
+            sleep(self.config.interval).await;
         }
     }
 
-    pub fn spawn_push(&self,service: String, addr: String) {
+    pub async fn spawn_push(&self,service: String, addr: String) {
         loop {
             let r = self.fetcher.push(service.clone(),addr.clone(),self.config.interval.clone()*2);
             if r.is_err() {
                 log::error!("service fetch fail:{}",r.err().unwrap());
             }
-            sleep(self.config.interval);
+            sleep(self.config.interval).await;
         }
     }
 
-    pub fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
+    pub async fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
         return match self.clients.get(service)
             .ok_or(err!("no service '{}' find!",service))?
             .do_balance(self.config.balance, "") {
@@ -133,7 +134,7 @@ impl BalanceManger {
         };
     }
 
-    pub fn call_all<Arg, Resp>(&self, service: &str, func: &str, arg: Arg, ip: &str) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
+    pub async fn call_all<Arg, Resp>(&self, service: &str, func: &str, arg: Arg, ip: &str) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
         return match self.clients
             .get(service).ok_or(err!("no service '{}' find!",service))?
             .do_balance(self.config.balance, ip) {

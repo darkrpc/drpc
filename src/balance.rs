@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use mco::std::sync::SyncVec;
+use dark_std::sync::SyncVec;
 use rand::Rng;
 
 ///Defines the minimum abstraction required by the load algorithm
@@ -168,7 +168,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
 
 #[cfg(test)]
 mod test {
-    use balance::{RpcClient, LoadBalance, LoadBalanceType};
+    use crate::balance::{RpcClient, LoadBalance, LoadBalanceType};
 
     impl RpcClient for String {
         fn addr(&self) -> &str {
