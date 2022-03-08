@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader};
 
 use std::ops::Index;
@@ -93,9 +93,9 @@ impl ServerStub {
     pub async fn call(&self, stubs: &SyncHashMap<String, Box<dyn Stub>>, codec: &Codecs, mut stream: TcpStream) {
         // the read half of the stream
         let rd: TcpStream = unsafe { std::mem::transmute_copy(&stream) };
-        let mut rs = BufReader::new(rd);
+        let mut rs = SafeDrop::new(rd);
         loop {
-            let req = match Frame::decode_from(&mut rs).await {
+            let req = match Frame::decode_from(rs.get_mut().get_mut()).await {
                 Ok(r) => r,
                 Err(ref e) => {
                     if e.kind() == std::io::ErrorKind::UnexpectedEof {
@@ -136,7 +136,25 @@ impl ServerStub {
             // send the result back to client
             stream.write(&data).await;
         }
-        let rd = rs.into_inner();
-        std::mem::forget(rd);
+    }
+}
+
+pub struct SafeDrop{
+    inner: Option<RefCell<BufReader<TcpStream>>>
+}
+impl Drop for SafeDrop{
+    fn drop(&mut self) {
+       let v= self.inner.take().unwrap().into_inner();
+       std::mem::forget(v.into_inner());
+    }
+}
+impl SafeDrop {
+    pub fn new(tcp:TcpStream) -> SafeDrop {
+        Self{
+            inner: Some(RefCell::new(BufReader::new(tcp)))
+        }
+    }
+    fn get_mut(&mut self) -> RefMut<'_, BufReader<TcpStream>> {
+        self.inner.as_mut().unwrap().borrow_mut()
     }
 }

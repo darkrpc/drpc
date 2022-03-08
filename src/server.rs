@@ -150,9 +150,7 @@ impl Server {
         let server = Arc::new(self);
         for (stream, addr) in listener.accept().await {
             let server = server.clone();
-            tokio::spawn(async move {
-                server.call(stream).await;
-            });
+            server.call(stream).await;
         }
     }
 }
