@@ -136,20 +136,20 @@ impl Server {
     ///         Ok(1)
     ///     });
     /// ```
-    pub async fn register_box_future<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
+    pub fn register_box_future<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
         where F: Fn(Req) -> BoxFuture<'static,Result<Resp>> {
-        self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f))).await;
+        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f)));
     }
 
     ///register async fn
-    pub async fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static,Out:'static, F: 'static>(&mut self, name: &str, f: F)
+    pub fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static,Out:'static, F: 'static>(&mut self, name: &str, f: F)
         where
             Out:Future<Output=Result<Resp>>+Send,
             F: Fn(Req) -> Out {
         let f1= move |req:Req| -> BoxFuture<'static,Result<Resp>>{
             Box::pin((f)(req))
         };
-        self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f1))).await;
+        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f1)));
     }
 
     pub async fn serve<A>(self, addr: A) where A: tokio::net::ToSocketAddrs {
