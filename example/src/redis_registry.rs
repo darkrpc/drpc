@@ -10,20 +10,21 @@ use std::time::Duration;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
 use drpc::server::Server;
 use dark_std::errors::Result;
-use redis::Commands;
+use futures::future::BoxFuture;
+use redis::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 pub struct RedisCenter {
     server_prefix: String,
-    c: Mutex<redis::Client>,
+    c: redis::Client,
 }
 
 impl RedisCenter {
     pub fn new() -> Self {
         Self {
             server_prefix: "service:".to_string(),
-            c: Mutex::new(redis::Client::open("redis://127.0.0.1:6379".to_string()).expect("connect redis://127.0.0.1:6379")),
+            c: redis::Client::open("redis://127.0.0.1:6379".to_string()).expect("connect redis://127.0.0.1:6379"),
         }
     }
 }
@@ -32,15 +33,17 @@ impl RedisCenter {
 impl RegistryCenter for RedisCenter {
     async fn pull(&self) -> HashMap<String, Vec<String>> {
         let mut m = HashMap::new();
-        let mut l = self.c.lock().await;
-        if let Ok(v) = l.keys::<&str, Vec<String>>(&format!("{}*", self.server_prefix)) {
-            for service in v {
-                if let Ok(list) = l.hgetall::<&str, HashMap<String, String>>(service.as_str()) {
-                    let mut data = Vec::with_capacity(list.len());
-                    for (k, _) in list {
-                        data.push(k);
+        let mut l =  self.c.get_async_connection().await;
+        if let Ok(mut l)=l{
+            if let Ok(v) = l.keys::<&str, Vec<String>>(&format!("{}*", self.server_prefix)).await {
+                for service in v {
+                    if let Ok(list) = l.hgetall::<&str, HashMap<String, String>>(service.as_str()).await {
+                        let mut data = Vec::with_capacity(list.len());
+                        for (k, _) in list {
+                            data.push(k);
+                        }
+                        m.insert(service.trim_start_matches(&self.server_prefix).to_string(), data);
                     }
-                    m.insert(service.trim_start_matches(&self.server_prefix).to_string(), data);
                 }
             }
         }
@@ -48,9 +51,11 @@ impl RegistryCenter for RedisCenter {
     }
 
     async fn push(&self, service: String, addr: String, ex: Duration) -> Result<()> {
-        let mut l = self.c.lock().await;
-        l.hset::<String, String, String, ()>(format!("{}{}", self.server_prefix, &service), addr.to_string(), addr.to_string()).unwrap();
-        l.expire::<String, ()>(format!("{}{}", &self.server_prefix, service), ex.as_secs() as usize);
+        let mut l =  self.c.get_async_connection().await;
+        if let Ok(mut l) = l{
+            l.hset::<String, String, String, ()>(format!("{}{}", self.server_prefix, &service), addr.to_string(), addr.to_string()).await.unwrap();
+            l.expire::<String, ()>(format!("{}{}", &self.server_prefix, service), ex.as_secs() as usize).await;
+        }
         return Ok(());
     }
 }
@@ -77,8 +82,10 @@ async fn spawn_server(manager: Arc<BalanceManger>) {
         manager.spawn_push("test".to_string(), "127.0.0.1:10000".to_string()).await;
     });
     let mut s = Server::default();
-    s.register_fn("handle", |arg: i32| -> Result<i32>{
-        Ok(1)
+    s.register_fn("handle", |arg: i32| -> BoxFuture<Result<i32>>{
+        Box::pin(async{
+            Ok(1)
+        })
     }).await;
     s.serve("127.0.0.1:10000").await;
 }
