@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 use dark_std::errors::Error;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use log::{error, info};
+use log::{debug, error, info};
 
 // Frame layout
 // id(u64) + len(u64) + payload([u8; len])
@@ -35,10 +35,10 @@ impl Frame {
     /// decode a frame from the reader
     pub async fn decode_from<R: AsyncRead+Unpin>(r: &mut R) -> io::Result<Self> {
         let id = r.read_u64().await?;
-        info!("decode id = {:?}", id);
+        debug!("decode id = {:?}", id);
 
         let len = r.read_u64().await? + 16;
-        info!("decode len = {:?}", len);
+        debug!("decode len = {:?}", len);
 
         if len > FRAME_MAX_LEN {
             let s = format!("decode too big frame length. len={}", len);
@@ -138,11 +138,11 @@ impl ReqBuf {
         // write from start
         cursor.set_position(0);
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
-        info!("encode id = {:?}", id);
+        debug!("encode id = {:?}", id);
 
         // adjust the data length
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len - 16).unwrap();
-        info!("encode len = {:?}", len);
+        debug!("encode len = {:?}", len);
 
         cursor.into_inner()
     }
@@ -221,11 +221,11 @@ impl RspBuf {
         // write from start
         cursor.set_position(0);
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
-        info!("encode id = {:?}", id);
+        debug!("encode id = {:?}", id);
 
         // adjust the data length
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len + 9).unwrap();
-        info!("encode len = {:?}", len);
+        debug!("encode len = {:?}", len);
 
         // write the type
         WriteBytesExt::write_u8(&mut cursor, ty).unwrap();
