@@ -2,7 +2,6 @@
 
 drpc
 
-* based on [mco](https://github.com/co-rs/mco), this is green-thread、coroutines crates
 * based T-L-V.for example:  ```[Tag][Length][Value]```
 * support json/bincode
 * support load balance(Round/Random/Hash/MinConnect)
