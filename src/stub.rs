@@ -95,7 +95,7 @@ impl ServerStub {
         let rd: TcpStream = unsafe { std::mem::transmute_copy(&stream) };
         let mut rs = SafeDrop::new(rd);
         loop {
-            let req = match Frame::decode_from(rs.get_mut().get_mut()).await {
+            let req = match Frame::decode_from(rs.get_mut()).await {
                 Ok(r) => r,
                 Err(ref e) => {
                     if e.kind() == std::io::ErrorKind::UnexpectedEof {
@@ -140,21 +140,21 @@ impl ServerStub {
 }
 
 pub struct SafeDrop{
-    inner: Option<RefCell<BufReader<TcpStream>>>
+    inner: Option<BufReader<TcpStream>>
 }
 impl Drop for SafeDrop{
     fn drop(&mut self) {
        let v= self.inner.take().unwrap().into_inner();
-       std::mem::forget(v.into_inner());
+       std::mem::forget(v);
     }
 }
 impl SafeDrop {
     pub fn new(tcp:TcpStream) -> SafeDrop {
         Self{
-            inner: Some(RefCell::new(BufReader::new(tcp)))
+            inner: Some(BufReader::new(tcp))
         }
     }
-    fn get_mut(&mut self) -> RefMut<'_, BufReader<TcpStream>> {
-        self.inner.as_mut().unwrap().borrow_mut()
+    fn get_mut(&mut self) -> &mut TcpStream {
+        self.inner.as_mut().unwrap().get_mut()
     }
 }
