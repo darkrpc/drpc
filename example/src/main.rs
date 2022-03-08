@@ -22,9 +22,7 @@ pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
 
 #[tokio::main]
 async fn main() {
-    fast_log::init(Config::new()
-        .console()
-        .filter(ModuleFilter::new_exclude(vec!["drpc::".to_string()])));
+    fast_log::init(Config::new().console());
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
         let c = Client::dial("127.0.0.1:10000").await.unwrap();
