@@ -10,7 +10,6 @@ edition = "2021"
 description = "Rust High Performance Async RPC Framework"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
-edition = "2018"
 license = "Apache-2.0"
 documentation = "https://github.com/darkrpc/drpc"
 repository = "https://github.com/darkrpc/drpc"
