@@ -69,7 +69,7 @@ impl BalanceManger {
     pub async fn pull(&self) -> Result<()> {
         let addrs = self.fetcher.pull().await;
         if addrs.is_empty(){
-            self.clients.clear();
+            self.clients.clear().await;
         }
         for (s, addrs) in addrs {
             let balance = self.clients.get(&s);
@@ -77,7 +77,7 @@ impl BalanceManger {
                 for addr in &addrs {
                     if !clients.contains(addr) {
                         let c = Client::dial(addr).await?;
-                        clients.put(c);
+                        clients.put(c).await;
                     }
                 }
                 let mut removes = vec![];
@@ -87,15 +87,15 @@ impl BalanceManger {
                     }
                 }
                 for x in removes {
-                    clients.remove(x);
+                    clients.remove(x).await;
                 }
             } else {
                 let mut clients = LoadBalance::new();
                 for x in addrs {
                     let c = Client::dial(&x).await?;
-                    clients.put(c);
+                    clients.put(c).await;
                 }
-                self.clients.insert(s, clients);
+                self.clients.insert(s, clients).await;
             }
         }
         return Ok(());

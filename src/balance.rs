@@ -47,7 +47,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
             if x.addr().eq(addr) {
                 let rm = self.rpc_clients.remove(idx).await;
                 if rm.is_none() {
-                    self.rpc_clients.push(arg.unwrap());
+                    self.rpc_clients.push(arg.unwrap()).await;
                     return None;
                 }
                 return rm;
@@ -55,7 +55,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
             idx += 1;
         }
         if let Some(arg) = arg {
-            self.rpc_clients.push(arg);
+            self.rpc_clients.push(arg).await;
         }
         return None;
     }
@@ -80,8 +80,8 @@ impl<C> LoadBalance<C> where C: RpcClient {
         return false;
     }
 
-    pub fn clear(&self) {
-        self.rpc_clients.clear();
+    pub async fn clear(&self) {
+        self.rpc_clients.clear().await;
     }
 
     pub fn do_balance(&self, b: LoadBalanceType, client_ip: &str) -> Option<Arc<C>> {

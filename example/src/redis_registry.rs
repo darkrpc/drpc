@@ -5,6 +5,7 @@ extern crate redis;
 
 
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
@@ -82,10 +83,11 @@ async fn spawn_server(manager: Arc<BalanceManger>) {
         manager.spawn_push("test".to_string(), "127.0.0.1:10000".to_string()).await;
     });
     let mut s = Server::default();
-    s.register_fn("handle", |arg: i32| -> BoxFuture<Result<i32>>{
-        Box::pin(async{
-            Ok(1)
-        })
-    }).await;
+
+    pub async fn handle(arg:i32)->Result<i32>{
+        Ok(arg+1)
+    }
+
+    s.register_fn("handle", handle).await;
     s.serve("127.0.0.1:10000").await;
 }
