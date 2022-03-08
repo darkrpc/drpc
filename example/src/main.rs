@@ -13,10 +13,13 @@ use drpc::client::Client;
 use drpc::codec::{Codecs, JsonCodec};
 use drpc::server::{Handler, Server, Stub};
 use dark_std::errors::Result;
+use futures::future::BoxFuture;
 use tokio::time::sleep;
 
-pub fn handle(req: i32) -> dark_std::errors::Result<i32> {
-    return Ok(req + 1);
+pub fn handle(req: i32) -> BoxFuture<'static, dark_std::errors::Result<i32>> {
+    Box::pin(async move {
+        Ok(req + 1)
+    })
 }
 
 #[tokio::main]
@@ -35,11 +38,7 @@ async fn main() {
     });
     let mut s = Server::default();
     //s.codec = Codecs::JsonCodec(JsonCodec{});
-
     s.register_fn("handle", handle).await;
-    // s.register_fn("handle_fn2", |arg:i32| -> Result<i32>{
-    //     Ok(1)
-    // }).await;
     s.serve("0.0.0.0:10000").await;
     println!("Hello, world!");
 }

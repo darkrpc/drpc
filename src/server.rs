@@ -9,12 +9,14 @@ use std::io::Write;
 use std::marker::PhantomData;
 use std::net::ToSocketAddrs;
 use std::pin::Pin;
+use std::process::Output;
 use std::sync::Arc;
 use log::error;
 use dark_std::sync::SyncHashMap;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use dark_std::errors::Result;
+use futures::future::BoxFuture;
 
 pub struct Server {
     pub handles: SyncHashMap<String, Box<dyn Stub>>,
@@ -39,47 +41,57 @@ impl Server {
     }
 }
 
-pub trait Stub:Sync+Send {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>>;
+pub trait Stub: Sync + Send {
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>>;
 }
 
-pub trait Handler: Stub+Sync+Send {
-    type Req: DeserializeOwned;
+pub trait Handler: Stub + Sync + Send {
+    type Req: DeserializeOwned + Send;
     type Resp: Serialize;
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>> {
-        //.or_else(|e| Result::Err(err!("{}",e)))?
-        let req: Self::Req = codec.decode(arg)?;
-        let data = self.handle(req)?;
-        Ok(codec.encode(data)?)
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>> {
+        let req = codec.decode::<Self::Req>(arg);
+        let f = {
+            if req.is_err() {
+                Err(req.err().unwrap())
+            } else {
+                Ok(self.handle(req.unwrap()))
+            }
+        };
+        let codec = codec.clone();
+        Box::pin(async move {
+            let mut f = f?;
+            let data = f.await?;
+            Ok(codec.encode(data)?)
+        })
     }
-    fn handle(&self, req: Self::Req) -> Result<Self::Resp>;
+    fn handle(&self, req: Self::Req) -> BoxFuture<Result<Self::Resp>>;
 }
 
 impl<H: Handler> Stub for H {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>> {
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>> {
         <H as Handler>::accept(self, arg, codec)
     }
 }
 
-
 pub struct HandleFn<Req: DeserializeOwned, Resp: Serialize> {
-    pub f: Box<dyn Fn(Req) -> Result<Resp>>,
+    pub f: Box<dyn Fn(Req) -> BoxFuture<'static,Result<Resp>>>,
 }
 
-unsafe impl <Req: DeserializeOwned, Resp: Serialize>Sync for HandleFn<Req,Resp>{}
-unsafe impl <Req: DeserializeOwned, Resp: Serialize>Send for HandleFn<Req,Resp>{}
+unsafe impl<Req: DeserializeOwned, Resp: Serialize> Sync for HandleFn<Req, Resp> {}
 
-impl<Req: DeserializeOwned, Resp: Serialize> Handler for HandleFn<Req, Resp> {
+unsafe impl<Req: DeserializeOwned, Resp: Serialize> Send for HandleFn<Req, Resp> {}
+
+impl<Req: DeserializeOwned + Send, Resp: Serialize> Handler for HandleFn<Req, Resp> {
     type Req = Req;
     type Resp = Resp;
 
-    fn handle(&self, req: Self::Req) -> dark_std::errors::Result<Self::Resp> {
+    fn handle(&self, req: Self::Req) -> BoxFuture<dark_std::errors::Result<Self::Resp>> {
         (self.f)(req)
     }
 }
 
 impl<Req: DeserializeOwned, Resp: Serialize> HandleFn<Req, Resp> {
-    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> Result<Resp> {
+    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> BoxFuture<'static,Result<Resp>> {
         Self {
             f: Box::new(f),
         }
@@ -124,7 +136,8 @@ impl Server {
     ///         Ok(1)
     ///     });
     /// ```
-    pub async fn register_fn<Req: DeserializeOwned + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F) where F: Fn(Req) -> Result<Resp> {
+    pub async fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
+        where F: Fn(Req) -> BoxFuture<'static,Result<Resp>> {
         self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f))).await;
     }
 
