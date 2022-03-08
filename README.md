@@ -34,6 +34,6 @@ async fn handle(req: i32) -> Result<i32> {
     Ok(req)
 }
 let mut s = Server::default();
-s.register_fn("handle", handle);
-s.serve("0.0.0.0:10000");
+s.register_fn("handle", handle).await;
+s.serve("0.0.0.0:10000").await;
 ```
