@@ -7,6 +7,7 @@ drpc
 * support json/bincode
 * support load balance(Round/Random/Hash/MinConnect)
 * support Custom registry, microservices. see [redis_registry](example/src/redis_registry.rs)
+* support tokio
 
 ## how to use?
 
