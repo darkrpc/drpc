@@ -83,11 +83,8 @@ async fn spawn_server(manager: Arc<BalanceManger>) {
         manager.spawn_push("test".to_string(), "127.0.0.1:10000".to_string()).await;
     });
     let mut s = Server::default();
-
-    pub async fn handle(arg:i32)->Result<i32>{
+    s.register_fn("handle", |arg:i32|async move{
         Ok(arg+1)
-    }
-
-    s.register_fn("handle", handle).await;
+    }).await;
     s.serve("127.0.0.1:10000").await;
 }
