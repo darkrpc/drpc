@@ -16,10 +16,8 @@ use dark_std::errors::Result;
 use futures::future::BoxFuture;
 use tokio::time::sleep;
 
-pub fn handle(req: i32) -> BoxFuture<'static, dark_std::errors::Result<i32>> {
-    Box::pin(async move {
-        Ok(req + 1)
-    })
+pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
+    Ok(req + 1)
 }
 
 #[tokio::main]
