@@ -39,67 +39,49 @@ impl Server {
     }
 }
 
-pub trait Stub: Sync + Send {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Pin<Box<dyn Future<Output=Result<Vec<u8>>> + Send>>;
+pub trait Stub:Sync+Send {
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>>;
 }
 
-pub trait Handler: Stub + Sync + Send + Clone + 'static {
-    type Req: DeserializeOwned + Send;
+pub trait Handler: Stub+Sync+Send {
+    type Req: DeserializeOwned;
     type Resp: Serialize;
-    type Future: Future<Output=Result<Self::Resp>> + Send;
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Pin<Box<dyn Future<Output=Result<Vec<u8>>> + Send>> {
-        let codec = codec.clone();
-        let arg = arg.to_owned();
-        let s = self.clone();
-        Box::pin(async move {
-            let arg = arg;
-            let req: Self::Req = codec.decode(&arg)?;
-            let data = s.handle(req).await?;
-            Ok(codec.encode(data)?)
-        })
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>> {
+        //.or_else(|e| Result::Err(err!("{}",e)))?
+        let req: Self::Req = codec.decode(arg)?;
+        let data = self.handle(req)?;
+        Ok(codec.encode(data)?)
     }
-    fn handle(&self, req: Self::Req) -> Self::Future;
+    fn handle(&self, req: Self::Req) -> Result<Self::Resp>;
 }
 
 impl<H: Handler> Stub for H {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> Pin<Box<dyn Future<Output=Result<Vec<u8>>> + Send>> {
+    fn accept(&self, arg: &[u8], codec: &Codecs) -> Result<Vec<u8>> {
         <H as Handler>::accept(self, arg, codec)
     }
 }
 
 
 pub struct HandleFn<Req: DeserializeOwned, Resp: Serialize> {
-    pub f: Arc<Pin<Box<dyn Fn(Req) -> dyn Future<Output=Result<Resp>>>>>,
+    pub f: Box<dyn Fn(Req) -> Result<Resp>>,
 }
 
-unsafe impl<Req: DeserializeOwned, Resp: Serialize> Sync for HandleFn<Req, Resp> {}
+unsafe impl <Req: DeserializeOwned, Resp: Serialize>Sync for HandleFn<Req,Resp>{}
+unsafe impl <Req: DeserializeOwned, Resp: Serialize>Send for HandleFn<Req,Resp>{}
 
-unsafe impl<Req: DeserializeOwned, Resp: Serialize> Send for HandleFn<Req, Resp> {}
-
-impl<Req: DeserializeOwned, Resp: Serialize> Clone for HandleFn<Req, Resp> {
-    fn clone(&self) -> Self {
-        HandleFn{
-            f: self.f.clone()
-        }
-    }
-}
-
-impl<Req: DeserializeOwned+Send+'static, Resp: Serialize+'static> Handler for HandleFn<Req, Resp> {
+impl<Req: DeserializeOwned, Resp: Serialize> Handler for HandleFn<Req, Resp> {
     type Req = Req;
     type Resp = Resp;
 
-    type Future =  Pin<Box<(dyn Future<Output = Result<Resp>> + Send)>>;
-
-    fn handle(&self, req: Self::Req) -> Pin<Box<(dyn Future<Output = Result<Resp>> + Send)>> {
-        // (self.f)(req)
-        todo!()
+    fn handle(&self, req: Self::Req) -> dark_std::errors::Result<Self::Resp> {
+        (self.f)(req)
     }
 }
 
 impl<Req: DeserializeOwned, Resp: Serialize> HandleFn<Req, Resp> {
-    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> dyn Future<Output=Result<Resp>>{
+    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> Result<Resp> {
         Self {
-            f: Arc::new(Box::pin(f)),
+            f: Box::new(f),
         }
     }
 }
@@ -142,8 +124,7 @@ impl Server {
     ///         Ok(1)
     ///     });
     /// ```
-    pub async fn register_fn<Req: DeserializeOwned +Send+ 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
-        where F: Fn(Req) -> dyn Future<Output=Result<Resp>> {
+    pub async fn register_fn<Req: DeserializeOwned + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F) where F: Fn(Req) -> Result<Resp> {
         self.handles.insert(name.to_owned(), Box::new(HandleFn::new(f))).await;
     }
 

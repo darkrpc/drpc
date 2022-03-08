@@ -119,7 +119,7 @@ impl ServerStub {
                     return;
                 }
                 let stub = stub.unwrap();
-                let r = stub.accept(&h.body, codec).await;
+                let r = stub.accept(&h.body, codec);
                 if let Err(e) = r {
                     let data = rsp.finish(req.id, Err(WireError::ClientDeserialize(format!("accept {} fail!", e)))).await;
                     debug!("send rsp: id={}", req.id);

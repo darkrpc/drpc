@@ -15,7 +15,7 @@ use drpc::server::{Handler, Server, Stub};
 use dark_std::errors::Result;
 use tokio::time::sleep;
 
-pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
+pub fn handle(req: i32) -> dark_std::errors::Result<i32> {
     return Ok(req + 1);
 }
 
@@ -36,7 +36,7 @@ async fn main() {
     let mut s = Server::default();
     //s.codec = Codecs::JsonCodec(JsonCodec{});
 
-    //s.register_fn("handle", handle).await;
+    s.register_fn("handle", handle).await;
     // s.register_fn("handle_fn2", |arg:i32| -> Result<i32>{
     //     Ok(1)
     // }).await;
