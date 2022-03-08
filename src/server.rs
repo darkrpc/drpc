@@ -101,22 +101,6 @@ impl<Req: DeserializeOwned, Resp: Serialize> HandleFn<Req, Resp> {
 
 impl Server {
     ///register a handle to server
-    /// ```
-    /// use drpc::server::{Handler};
-    /// use dark_std::errors::Result;
-    ///
-    /// pub struct H{}
-    ///
-    /// impl Handler for H{
-    ///     type Req = i32;
-    ///     type Resp = i32;
-    ///
-    ///     fn handle(&self, req: Self::Req) -> Result<Self::Resp> {
-    ///         return Ok(req);
-    ///     }
-    /// }
-    ///
-    /// ```
     pub async fn register<H: 'static>(&mut self, name: &str, handle: H) where H: Stub {
         self.handles.insert(name.to_owned(), Box::new(handle)).await;
     }
@@ -127,12 +111,11 @@ impl Server {
     /// use drpc::server::{Server};
     /// use dark_std::errors::Result;
     /// let mut s = Server::default();
-    /// fn handle(req: i32) -> dark_std::errors::Result<i32> {
-    ///     return Ok(req + 1);
-    /// }
+    /// async fn handle(req: i32) -> dark_std::errors::Result<i32> { return Ok(req + 1); }
     ///     //s.codec = Codecs::JsonCodec(JsonCodec{});
     ///     s.register_fn("handle", handle);
-    ///     s.register_fn("handle_fn2", |arg:i32| -> Result<i32>{
+    ///     //way 2
+    ///     s.register_fn("handle_fn2", |arg:i32| async move {
     ///         Ok(1)
     ///     });
     /// ```

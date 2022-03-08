@@ -176,33 +176,33 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_put() {
+    #[tokio::test]
+    async fn test_put() {
         let mut load: LoadBalance<String> = LoadBalance::new();
-        load.put("127.0.0.1:13000".to_string());
-        load.put("127.0.0.1:13001".to_string());
+        load.put("127.0.0.1:13000".to_string()).await;
+        load.put("127.0.0.1:13001".to_string()).await;
 
-        let old = load.put("127.0.0.1:13001".to_string()).unwrap();
+        let old = load.put("127.0.0.1:13001".to_string()).await.unwrap();
         assert_eq!(old.addr(), "127.0.0.1:13001".to_string());
     }
 
-    #[test]
-    fn test_remove() {
+    #[tokio::test]
+    async fn test_remove() {
         let mut load: LoadBalance<String> = LoadBalance::new();
-        load.put("127.0.0.1:13000".to_string());
-        load.put("127.0.0.1:13001".to_string());
+        load.put("127.0.0.1:13000".to_string()).await;
+        load.put("127.0.0.1:13001".to_string()).await;
 
-        let old = load.remove("127.0.0.1:13000").unwrap();
+        let old = load.remove("127.0.0.1:13000").await.unwrap();
         assert_eq!(old.addr(), "127.0.0.1:13000".to_string());
     }
 
-    #[test]
-    fn test_min_connect() {
+    #[tokio::test]
+    async fn test_min_connect() {
         let mut load: LoadBalance<String> = LoadBalance::new();
-        load.put("127.0.0.1:13000".to_string());
-        load.put("127.0.0.1:13001".to_string());
-        load.put("127.0.0.1:13002".to_string());
-        load.put("127.0.0.1:13003".to_string());
+        load.put("127.0.0.1:13000".to_string()).await;
+        load.put("127.0.0.1:13001".to_string()).await;
+        load.put("127.0.0.1:13002".to_string()).await;
+        load.put("127.0.0.1:13003".to_string()).await;
         let mut v = vec![];
         let item = load.do_balance(LoadBalanceType::MinConnect, "");
         println!("select:{}", item.as_ref().unwrap().addr());
