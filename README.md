@@ -20,7 +20,7 @@ drpc = "0.1"
 * client
 
 ```rust
-use mco_rpc::client::Client;
+use drpc::client::Client;
 let c = Client::dial("127.0.0.1:10000").await.unwrap();
 let resp:i32 = c.call("handle", 1).await.unwrap();
 println!("resp=>>>>>>>>>>>>>> :{}", resp);
