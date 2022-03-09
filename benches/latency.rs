@@ -27,7 +27,7 @@ fn latency(bencher: &mut Bencher) {
         }
         let mut s = Server::default();
         //s.codec = Codecs::JsonCodec(JsonCodec{});
-        s.register_fn("handle",handle).await;
+        s.register_fn("handle",handle);
         s.serve(("127.0.0.1", 10000)).await;
         println!("rpc served");
     });
@@ -42,9 +42,7 @@ fn latency(bencher: &mut Bencher) {
     });
     bencher.iter(||{
         rt.block_on(async{
-            for _ in 0..1000{
-                let resp:i32 = c.call("handle",1).await.unwrap();
-            }
+            let resp:i32 = c.call("handle",1).await.unwrap();
         });
     });
 }
