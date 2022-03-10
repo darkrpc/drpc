@@ -18,18 +18,18 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
-    let m = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
-    let m_clone = m.clone();
+    let manager = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
+    let m_clone = manager.clone();
     tokio::spawn(async move {
         spawn_server(m_clone).await;
     });
     sleep(Duration::from_secs(2)).await;
-    let m_clone = m.clone();
+    let m_clone = manager.clone();
     tokio::spawn(async move {
         m_clone.spawn_pull().await;
     });
     sleep(Duration::from_secs(2)).await;
-    let r = m.call::<i32, i32>("test", "handle", 1).await;
+    let r = manager.call::<i32, i32>("test", "handle", 1).await;
     println!("-> test.handle(1)\n<- {}", r.unwrap());
 }
 
