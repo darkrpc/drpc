@@ -1,5 +1,7 @@
 # drpc
 
+drpc - Correct, high performance, robust, easy use,
+
 <img style="width: 100px;height: 100px;border-radius:20px;" width="100" height="100" src="logo.png" />
 
 drpc
