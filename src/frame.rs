@@ -322,12 +322,14 @@ mod test {
     use crate::frame::{Frame, ReqBuf};
 
     pub struct Mock {
-        inner: Vec<u8>,
+        pub inner: Vec<u8>,
+        pub pos: usize,
     }
 
     impl AsyncRead for Mock {
         fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
-            buf.put_slice(&self.inner[0..buf.initialized().len()]);
+            buf.put_slice(&self.inner[self.pos..self.pos + buf.initialized().len()]);
+            self.get_mut().pos += buf.filled().len();
             return Poll::Ready(Ok(()));
         }
     }
@@ -351,11 +353,13 @@ mod test {
     async fn test_frame() {
         let mut req = ReqBuf::new();
         let body = "hello".as_bytes();
-        req.write_all(body);
-        let data = req.finish(1);
+        req.write_all(body).await;
+        let data = req.finish(100);
         let mut mock = Mock {
-            inner: data
+            inner: data,
+            pos: 0,
         };
+        println!("data={:?}", mock.inner);
         let f = Frame::decode_from(&mut mock).await.unwrap();
         println!("id={},data={:?}", f.id, f.data);
     }
