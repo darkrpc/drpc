@@ -33,7 +33,7 @@ pub struct Frame {
 
 impl Frame {
     /// decode a frame from the reader
-    pub async fn decode_from<R: AsyncRead+Unpin>(r: &mut R) -> io::Result<Self> {
+    pub async fn decode_from<R: AsyncRead + Unpin>(r: &mut R) -> io::Result<Self> {
         let id = r.read_u64().await?;
         debug!("decode id = {:?}", id);
 
@@ -141,7 +141,7 @@ impl ReqBuf {
         debug!("encode id = {:?}", id);
 
         // adjust the data length
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len - 16).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 16).unwrap();
         debug!("encode len = {:?}", len);
 
         cursor.into_inner()
@@ -151,10 +151,10 @@ impl ReqBuf {
 impl AsyncWrite for ReqBuf {
     fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
         let mut p = Box::pin(AsyncWriteExt::write(&mut self.0, buf));
-        loop{
-            match Pin::new(&mut p).poll(cx){
+        loop {
+            match Pin::new(&mut p).poll(cx) {
                 Poll::Ready(v) => {
-                    match v{
+                    match v {
                         Ok(v) => {
                             return Poll::Ready(Ok(v));
                         }
@@ -175,7 +175,6 @@ impl AsyncWrite for ReqBuf {
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         Poll::Ready(Ok(()))
     }
-
 }
 
 /// rsp frame buffer that can be serialized into
@@ -188,6 +187,7 @@ impl Default for RspBuf {
 }
 
 pub const SERVER_POLL_ENCODE: u8 = 200;
+
 impl RspBuf {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(64);
@@ -224,13 +224,13 @@ impl RspBuf {
         debug!("encode id = {:?}", id);
 
         // adjust the data length
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len + 9).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len + 9).unwrap();
         debug!("encode len = {:?}", len);
 
         // write the type
         WriteBytesExt::write_u8(&mut cursor, ty).unwrap();
         // write the len
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor,len).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len).unwrap();
         // write the data into the writer
         match ty {
             0 => {} // the normal ret already writed
@@ -250,11 +250,11 @@ impl RspBuf {
 
 impl AsyncWrite for RspBuf {
     fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
-        let mut p=Box::pin(AsyncWriteExt::write(&mut self.0, buf));
-        loop{
-            match Pin::new(&mut p).poll(cx){
+        let mut p = Box::pin(AsyncWriteExt::write(&mut self.0, buf));
+        loop {
+            match Pin::new(&mut p).poll(cx) {
                 Poll::Ready(v) => {
-                    match v{
+                    match v {
                         Ok(v) => {
                             return Poll::Ready(Ok(v));
                         }
@@ -295,20 +295,68 @@ pub enum WireError {
     Polling,
 }
 
-impl From<std::io::Error> for WireError{
+impl From<std::io::Error> for WireError {
     fn from(e: io::Error) -> Self {
-         Self::ServerDeserialize(e.to_string())
+        Self::ServerDeserialize(e.to_string())
     }
 }
 
-impl ToString for WireError{
+impl ToString for WireError {
     fn to_string(&self) -> String {
-        match self{
-            WireError::ClientDeserialize(e) => {e.to_owned()}
-            WireError::ServerDeserialize(e) => {e.to_owned()}
-            WireError::ServerSerialize(e) => {e.to_owned()}
-            WireError::Status(e) => {e.to_owned()}
-            WireError::Polling => {"Polling".to_string()}
+        match self {
+            WireError::ClientDeserialize(e) => { e.to_owned() }
+            WireError::ServerDeserialize(e) => { e.to_owned() }
+            WireError::ServerSerialize(e) => { e.to_owned() }
+            WireError::Status(e) => { e.to_owned() }
+            WireError::Polling => { "Polling".to_string() }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::{Error, Write};
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+    use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
+    use crate::frame::{Frame, ReqBuf};
+
+    pub struct Mock {
+        inner: Vec<u8>,
+    }
+
+    impl AsyncRead for Mock {
+        fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
+            buf.put_slice(&self.inner[0..buf.initialized().len()]);
+            return Poll::Ready(Ok(()));
+        }
+    }
+
+    impl AsyncWrite for Mock {
+        fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, Error>> {
+            self.get_mut().inner.extend(buf);
+            Poll::Ready(Ok(buf.len()))
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+            Poll::Ready(Ok(()))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_frame() {
+        let mut req = ReqBuf::new();
+        let body = "hello".as_bytes();
+        req.write_all(body);
+        let data = req.finish(1);
+        let mut mock = Mock {
+            inner: data
+        };
+        let f = Frame::decode_from(&mut mock).await.unwrap();
+        println!("id={},data={:?}", f.id, f.data);
     }
 }
