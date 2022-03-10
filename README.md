@@ -29,7 +29,7 @@ T-L-V layout
 
 ```toml
 tokio = { version = "1", features = ["full"] }
-dark-std="0.1"
+dark-std = "0.1"
 drpc = "0.1"
 ```
 
@@ -46,7 +46,7 @@ println!("resp=>>>>>>>>>>>>>> :{}", resp);
 
 ```rust
 use drpc::server::Server;
-use dark_std::errors::Result;
+use drpc::Result;
 async fn handle(req: i32) -> Result<i32> {
     Ok(req)
 }

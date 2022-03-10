@@ -23,7 +23,7 @@ pub struct DTO {
     pub age: i32,
 }
 
-pub async fn handle(mut req: DTO) -> dark_std::errors::Result<DTO> {
+pub async fn handle(mut req: DTO) -> drpc::Result<DTO> {
     println!("recv dto<<<<<<<<<<<<<={:?}", req);
     req.name = "ye,you is joe".to_string();
     Ok(req)

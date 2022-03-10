@@ -22,3 +22,7 @@ pub mod balance;
 pub mod balance_manager;
 
 pub use balance_manager::*;
+
+
+pub use dark_std::errors::Error;
+pub use dark_std::errors::Result;

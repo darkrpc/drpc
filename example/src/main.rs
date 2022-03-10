@@ -13,11 +13,11 @@ use serde::Serialize;
 use drpc::client::Client;
 use drpc::codec::{Codecs, JsonCodec};
 use drpc::server::{Handler, Server, Stub};
-use dark_std::errors::Result;
+use drpc::Result;
 use futures::future::BoxFuture;
 use tokio::time::sleep;
 
-pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
+pub async fn handle(req: i32) -> drpc::Result<i32> {
      Ok(req + 1)
 }
 
