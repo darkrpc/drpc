@@ -14,10 +14,10 @@ use serde_json::to_vec;
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
 // req frame layout
-// id(u64) + ok(u8) + len(u64) + req_data([u8; len])
+// id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
-// rsp frame layout
-// id(u64) + ok(u8) + len(u64) + rsp_data([u8; len1])
+// rsp frame layout(ok=0,payload is string,ok=1,payload is data)
+// id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
 // max frame len
 const FRAME_MAX_LEN: u64 = 1024 * 1024;
