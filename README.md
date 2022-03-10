@@ -8,7 +8,20 @@ drpc
 * support json/bincode
 * support load balance(Round/Random/Hash/MinConnect)
 * support Custom registry, microservices. see [redis_registry](example/src/redis_registry.rs)
-* support tokio
+* support tokio，this is async/await crate
+
+T-L-V layout
+```rust
+// Frame layout
+// id(u64) + ok(u8) + len(u64) + payload([u8; len])
+
+// request frame layout
+// id(u64) + ok(u8) + len(u64) + payload([u8; len])
+
+// response frame layout(ok=0,payload is string,ok=1,payload is data)
+// id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
+```
+
 
 ## how to use?
 
