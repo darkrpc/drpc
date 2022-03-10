@@ -142,11 +142,13 @@ impl Server {
             listener.local_addr().unwrap(),
         );
         let server = Arc::new(self);
-        for (stream, addr) in listener.accept().await {
-            let server = server.clone();
-            tokio::spawn(async move {
-                server.call(stream).await;
-            });
+        loop{
+            if let Ok((stream,_))= listener.accept().await {
+                let server = server.clone();
+                tokio::spawn(async move {
+                    server.call(stream).await;
+                });
+            }
         }
     }
 }
