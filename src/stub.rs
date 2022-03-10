@@ -1,5 +1,5 @@
 use std::cell::{RefCell, RefMut};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
 use std::ops::Index;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -95,9 +95,10 @@ impl ServerStub {
     pub fn new() -> Self {
         Self {}
     }
-    pub async fn call(&self, stubs: &SyncHashMap<String, Box<dyn Stub>>, codec: &Codecs, mut stream: TcpStream) {
+
+    pub async fn call<S>(&self, stubs: &SyncHashMap<String, Box<dyn Stub>>, codec: &Codecs, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin{
         // the read half of the stream
-        let rd: TcpStream = unsafe { std::mem::transmute_copy(&stream) };
+        let rd: S = unsafe { std::mem::transmute_copy(&stream) };
         let mut rs = SafeDrop::new(rd);
         loop {
             let req = match Frame::decode_from(rs.get_mut()).await {
@@ -146,24 +147,24 @@ impl ServerStub {
     }
 }
 
-pub struct SafeDrop {
-    inner: Option<BufReader<TcpStream>>,
+pub struct SafeDrop<S: AsyncRead + AsyncWrite + Unpin> {
+    inner: Option<BufReader<S>>,
 }
 
-impl Drop for SafeDrop {
+impl <S: AsyncRead + AsyncWrite + Unpin>Drop for SafeDrop<S> {
     fn drop(&mut self) {
         let v = self.inner.take().unwrap().into_inner();
         std::mem::forget(v);
     }
 }
 
-impl SafeDrop {
-    pub fn new(tcp: TcpStream) -> SafeDrop {
+impl <S: AsyncRead + AsyncWrite + Unpin>SafeDrop<S> {
+    pub fn new(tcp: S) -> SafeDrop<S> {
         Self {
             inner: Some(BufReader::new(tcp))
         }
     }
-    fn get_mut(&mut self) -> &mut TcpStream {
+    fn get_mut(&mut self) -> &mut S {
         self.inner.as_mut().unwrap().get_mut()
     }
 }

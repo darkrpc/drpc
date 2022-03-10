@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use dark_std::errors::Result;
 use futures::future::BoxFuture;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct Server {
     pub handles: SyncHashMap<String, Box<dyn Stub>>,
@@ -35,8 +36,9 @@ impl Default for Server {
 }
 
 impl Server {
+    ///call server method
     #[inline]
-    pub async fn call(&self, stream: TcpStream) {
+    pub async fn call<S>(&self, stream: S) where S: AsyncRead + AsyncWrite + Unpin {
         self.stub.call(&self.handles, &self.codec, stream).await;
     }
 }
@@ -74,7 +76,7 @@ impl<H: Handler> Stub for H {
 }
 
 pub struct HandleFn<Req: DeserializeOwned, Resp: Serialize> {
-    pub f: Box<dyn Fn(Req) -> BoxFuture<'static,Result<Resp>>>,
+    pub f: Box<dyn Fn(Req) -> BoxFuture<'static, Result<Resp>>>,
 }
 
 unsafe impl<Req: DeserializeOwned, Resp: Serialize> Sync for HandleFn<Req, Resp> {}
@@ -91,7 +93,7 @@ impl<Req: DeserializeOwned + Send, Resp: Serialize> Handler for HandleFn<Req, Re
 }
 
 impl<Req: DeserializeOwned, Resp: Serialize> HandleFn<Req, Resp> {
-    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> BoxFuture<'static,Result<Resp>> {
+    pub fn new<F: 'static>(f: F) -> Self where F: Fn(Req) -> BoxFuture<'static, Result<Resp>> {
         Self {
             f: Box::new(f),
         }
@@ -120,16 +122,16 @@ impl Server {
     ///     });
     /// ```
     pub fn register_box_future<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
-        where F: Fn(Req) -> BoxFuture<'static,Result<Resp>> {
+        where F: Fn(Req) -> BoxFuture<'static, Result<Resp>> {
         self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f)));
     }
 
     ///register async fn
-    pub fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static,Out:'static, F: 'static>(&mut self, name: &str, f: F)
+    pub fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, Out: 'static, F: 'static>(&mut self, name: &str, f: F)
         where
-            Out:Future<Output=Result<Resp>>+Send,
+            Out: Future<Output=Result<Resp>> + Send,
             F: Fn(Req) -> Out {
-        let f1= move |req:Req| -> BoxFuture<'static,Result<Resp>>{
+        let f1 = move |req: Req| -> BoxFuture<'static, Result<Resp>>{
             Box::pin((f)(req))
         };
         self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f1)));
@@ -142,8 +144,8 @@ impl Server {
             listener.local_addr().unwrap(),
         );
         let server = Arc::new(self);
-        loop{
-            if let Ok((stream,_))= listener.accept().await {
+        loop {
+            if let Ok((stream, _)) = listener.accept().await {
                 let server = server.clone();
                 tokio::spawn(async move {
                     server.call(stream).await;
