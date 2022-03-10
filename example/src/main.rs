@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::process::exit;
 use std::time::Duration;
+use dark_std::err;
 use fast_log::config::Config;
 use fast_log::filter::ModuleFilter;
 use serde::de::DeserializeOwned;
@@ -17,7 +18,7 @@ use futures::future::BoxFuture;
 use tokio::time::sleep;
 
 pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
-    Ok(req + 1)
+     Ok(req + 1)
 }
 
 #[tokio::main]

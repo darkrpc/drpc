@@ -11,7 +11,7 @@ use dark_std::sync::map_hash::SyncHashMap;
 use serde::de::DeserializeOwned;
 use serde::{Serialize, Deserialize};
 use crate::codec::{Codec, Codecs};
-use crate::frame::{Frame, ReqBuf, RspBuf, WireError};
+use crate::frame::{Frame, ReqBuf};
 use crate::server::Stub;
 use dark_std::errors::Error;
 
@@ -60,7 +60,7 @@ impl ClientStub {
             id
         };
         debug!("request id = {}", id);
-        let data = req_buf.finish(id);
+        let data = req_buf.finish(id, true);
         stream.write_all(&data).await?;
         let time = std::time::Instant::now();
         // read the response
@@ -70,10 +70,15 @@ impl ClientStub {
             // discard the rsp that is is not belong to us
             if rsp_frame.id == id {
                 debug!("get response id = {}", id);
-                let rsp_req = rsp_frame.decode_req();
-                let rsp_data = rsp_frame.decode_rsp().map_err(|e| Error::from(e.to_string()))?;
-                let resp: Resp = codec.decode(rsp_data)?;
-                return Ok(resp);
+                if rsp_frame.ok == 0 {
+                    let rsp_data = rsp_frame.decode_rsp();
+                    let resp: String = unsafe { String::from_utf8_unchecked(rsp_data.to_vec()) };
+                    return Err(Error { inner: resp });
+                } else {
+                    let rsp_data = rsp_frame.decode_rsp();
+                    let resp: Resp = codec.decode(rsp_data)?;
+                    return Ok(resp);
+                }
             } else {
                 if time.elapsed() > self.timeout {
                     return Err(err!("rpc call timeout!"));
@@ -107,12 +112,13 @@ impl ServerStub {
                 }
             };
             debug!("get request: id={:?}", req.id);
-            let mut rsp = RspBuf::new();
+            let mut rsp = ReqBuf::new();
             let req_data = req.decode_req();
             if let Ok(h) = codec.decode::<PackReq>(&req_data) {
                 let stub = stubs.get(&h.m);
                 if stub.is_none() {
-                    let data = rsp.finish(req.id, Err(WireError::ClientDeserialize(format!("method {} not find!", h.m)))).await;
+                    rsp.write_all(format!("method {} not find!", h.m).as_bytes()).await;
+                    let data = rsp.finish(req.id, false);
                     debug!("send rsp: id={}", req.id);
                     // send the result back to client
                     stream.write(&data).await;
@@ -121,7 +127,8 @@ impl ServerStub {
                 let stub = stub.unwrap();
                 let r = stub.accept(&h.body, codec).await;
                 if let Err(e) = r {
-                    let data = rsp.finish(req.id, Err(WireError::ClientDeserialize(format!("accept {} fail!", e)))).await;
+                    rsp.write_all(e.to_string().as_bytes()).await;
+                    let data = rsp.finish(req.id, false);
                     debug!("send rsp: id={}", req.id);
                     // send the result back to client
                     stream.write(&data).await;
@@ -131,7 +138,7 @@ impl ServerStub {
                 rsp.write_all(&r).await;
             }
             // let ret = server.service(req.decode_req(), &mut rsp);
-            let data = rsp.finish(req.id, Ok(())).await;
+            let data = rsp.finish(req.id, true);
             debug!("send rsp ok: id={}", req.id);
             // send the result back to client
             stream.write(&data).await;
@@ -139,18 +146,20 @@ impl ServerStub {
     }
 }
 
-pub struct SafeDrop{
-    inner: Option<BufReader<TcpStream>>
+pub struct SafeDrop {
+    inner: Option<BufReader<TcpStream>>,
 }
-impl Drop for SafeDrop{
+
+impl Drop for SafeDrop {
     fn drop(&mut self) {
-       let v= self.inner.take().unwrap().into_inner();
-       std::mem::forget(v);
+        let v = self.inner.take().unwrap().into_inner();
+        std::mem::forget(v);
     }
 }
+
 impl SafeDrop {
-    pub fn new(tcp:TcpStream) -> SafeDrop {
-        Self{
+    pub fn new(tcp: TcpStream) -> SafeDrop {
+        Self {
             inner: Some(BufReader::new(tcp))
         }
     }
