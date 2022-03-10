@@ -11,10 +11,27 @@ use std::time::Duration;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
 use drpc::server::Server;
 use dark_std::errors::Result;
-use futures::future::BoxFuture;
 use redis::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+
+
+#[tokio::main]
+async fn main() {
+    let m = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
+    let m_clone = m.clone();
+    tokio::spawn(async move {
+        spawn_server(m_clone).await;
+    });
+    sleep(Duration::from_secs(2)).await;
+    let m_clone = m.clone();
+    tokio::spawn(async move {
+        m_clone.spawn_pull().await;
+    });
+    sleep(Duration::from_secs(2)).await;
+    let r = m.call::<i32, i32>("test", "handle", 1).await;
+    println!("-> test.handle(1)\n<- {}", r.unwrap());
+}
 
 pub struct RedisCenter {
     server_prefix: String,
@@ -61,22 +78,6 @@ impl RegistryCenter for RedisCenter {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    let m = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
-    let m_clone = m.clone();
-    tokio::spawn(async move {
-        spawn_server(m_clone).await;
-    });
-    sleep(Duration::from_secs(2)).await;
-    let m_clone = m.clone();
-    tokio::spawn(async move {
-        m_clone.spawn_pull().await;
-    });
-    sleep(Duration::from_secs(2)).await;
-    let r = m.call::<i32, i32>("test", "handle", 1).await;
-    println!("-> test.handle(1)\n<- {}", r.unwrap());
-}
 
 async fn spawn_server(manager: Arc<BalanceManger>) {
     tokio::spawn(async move {

@@ -13,7 +13,6 @@ use drpc::client::Client;
 use drpc::codec::{Codecs, JsonCodec};
 use drpc::server::{Handler, Server, Stub};
 use dark_std::errors::Result;
-use futures::future::BoxFuture;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
 
