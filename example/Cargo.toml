@@ -6,7 +6,9 @@ edition = "2021"
 [[bin]]
 name= "redis_registry"
 path="src/redis_registry.rs"
-
+[[bin]]
+name= "main_json"
+path="src/main_json.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

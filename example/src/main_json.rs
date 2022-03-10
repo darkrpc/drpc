@@ -9,16 +9,24 @@ use dark_std::err;
 use fast_log::config::Config;
 use fast_log::filter::ModuleFilter;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
 use drpc::client::Client;
 use drpc::codec::{Codecs, JsonCodec};
 use drpc::server::{Handler, Server, Stub};
 use dark_std::errors::Result;
 use futures::future::BoxFuture;
 use tokio::time::sleep;
+use serde::{Serialize, Deserialize};
 
-pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
-     Ok(req + 1)
+#[derive(Serialize, Deserialize,Debug)]
+pub struct DTO {
+    pub name: String,
+    pub age: i32,
+}
+
+pub async fn handle(mut req: DTO) -> dark_std::errors::Result<DTO> {
+    println!("recv dto<<<<<<<<<<<<<={:?}", req);
+    req.name = "ye,you is joe".to_string();
+    Ok(req)
 }
 
 #[tokio::main]
@@ -26,13 +34,18 @@ async fn main() {
     fast_log::init(Config::new().console());
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
-        let c = Client::dial("127.0.0.1:10000").await.unwrap();
+        let mut c = Client::dial("127.0.0.1:10000").await.unwrap();
+        c.codec = Codecs::JsonCodec(JsonCodec {});
         println!("dial success");
-        let resp: i32 = c.call("handle", 1).await.unwrap();
-        println!("resp=>>>>>>>>>>>>>> :{}", resp);
+        let resp: DTO = c.call("handle", DTO {
+            name: "joe".to_string(),
+            age: 18,
+        }).await.unwrap();
+        println!("resp=>>>>>>>>>>>>>> :{:?}", resp);
         exit(0);
     });
     let mut s = Server::default();
+    s.codec = Codecs::JsonCodec(JsonCodec {});
     s.register_fn("handle", handle);
     s.serve("0.0.0.0:10000").await;
     println!("Hello, world!");
