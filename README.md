@@ -2,7 +2,7 @@
 
 drpc - Correct, high performance, robust, easy use,
 
-<img style="width: 100px;height: 100px;border-radius:20px;" src="logo.png" />
+<img style="width: 100px;height: 98px;border-radius:20px;" src="logo.png" />
 
 drpc
 
