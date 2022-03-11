@@ -9,6 +9,9 @@ path = "src/redis_registry.rs"
 [[bin]]
 name = "main_json"
 path = "src/main_json.rs"
+[[bin]]
+name = "main_set_frame_size"
+path = "src/main_set_frame_size.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
