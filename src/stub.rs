@@ -111,6 +111,7 @@ impl ServerStub {
                     if name.as_bytes().eq(&payload[0..name.len()]) {
                         //eq method
                         method = Some((name, stub));
+                        break;
                     }
                 }
             }
