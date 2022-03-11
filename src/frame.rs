@@ -19,11 +19,10 @@ use serde_json::to_vec;
 // rsp frame layout(ok=0,payload is string,ok=1,payload is data)
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
-// max frame len
-const FRAME_MAX_LEN: u64 = 1024 * 1024;
+// max frame len=10MB
+const FRAME_MAX_LEN: u64 = 10 * 1024 * 1024;
 
 /// raw frame wrapper, low level protocol
-/// TODO: add check sum check
 #[derive(Debug)]
 pub struct Frame {
     /// frame id, req and rsp has the same id
