@@ -20,7 +20,7 @@ use serde_json::to_vec;
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
 // max frame len
-const FRAME_MAX_LEN: u64 = 1017 * 1017;
+const FRAME_MAX_LEN: u64 = 1024 * 1024;
 
 /// raw frame wrapper, low level protocol
 /// TODO: add check sum check
