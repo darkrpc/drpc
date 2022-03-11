@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, BufReader};
 use crate::tokio::io::AsyncWriteExt;
 use std::io::{self, Cursor, ErrorKind, Write};
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::task::{Context, Poll};
 use dark_std::errors::Error;
 
@@ -19,8 +20,8 @@ use serde_json::to_vec;
 // rsp frame layout(ok=0,payload is string,ok=1,payload is data)
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
-// max frame len=10MB
-const FRAME_MAX_LEN: u64 = 10 * 1024 * 1024;
+/// max frame len=10MB.
+pub static FRAME_MAX_LEN: AtomicU64 = AtomicU64::new(10 * 1024 * 1024);
 
 /// raw frame wrapper, low level protocol
 #[derive(Debug)]
@@ -45,7 +46,7 @@ impl Frame {
         let len = r.read_u64().await?;
         debug!("decode len = {:?}", len);
 
-        if len > FRAME_MAX_LEN {
+        if len > FRAME_MAX_LEN.load(Ordering::SeqCst) {
             let s = format!("decode too big frame length. len={}", len);
             error!("{}", s);
             return Err(io::Error::new(ErrorKind::InvalidInput, s));
@@ -102,7 +103,7 @@ impl ReqBuf {
     pub fn finish(self, id: u64, ok: bool) -> Vec<u8> {
         let mut cursor = self.0;
         let len = cursor.get_ref().len() as u64;
-        assert!(len <= FRAME_MAX_LEN);
+        assert!(len <= FRAME_MAX_LEN.load(Ordering::SeqCst));
 
         // write from start
         cursor.set_position(0);
