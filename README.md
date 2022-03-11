@@ -19,7 +19,7 @@ T-L-V layout
 // Frame layout
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
-// request frame layout. payload = method(string)+arg_data
+// request frame layout. payload = method(string)+'\n'+arg_data
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
 // response frame layout.ok=0? payload = error string,ok=1? payload = data

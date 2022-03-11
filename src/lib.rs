@@ -14,7 +14,6 @@ extern crate rand;
 
 pub mod codec;
 pub mod stub;
-pub mod proto;
 pub mod client;
 pub mod server;
 pub mod frame;

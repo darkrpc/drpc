@@ -14,6 +14,7 @@ use crate::codec::{Codec, Codecs};
 use crate::frame::{Frame, ReqBuf};
 use crate::server::Stub;
 use dark_std::errors::Error;
+use futures::TryFutureExt;
 use tokio::net::TcpStream;
 
 /// and the client request parameters are packaged into a network message,
@@ -34,6 +35,7 @@ impl ClientStub {
 
     pub async fn call<Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &Codecs, stream: &mut TcpStream) -> Result<Resp> {
         let mut arg_data = method.to_string().into_bytes();
+        arg_data.push('\n' as u8);
         arg_data.extend(codec.encode(arg)?);
         let mut req_buf = ReqBuf::new();
         req_buf.write_all(&arg_data).await?;
@@ -105,26 +107,27 @@ impl ServerStub {
             debug!("get request: id={:?}", req.id);
             let mut rsp = ReqBuf::new();
             let payload = req.get_payload();
-            let mut method = None;
-            for (name, stub) in stubs {
-                if payload.len() >= name.len() {
-                    if name.as_bytes().eq(&payload[0..name.len()]) {
-                        //eq method
-                        method = Some((name, stub));
+            let mut method = {
+                let mut index = 0;
+                for x in payload {
+                    if x.eq(&('\n' as u8)) {
                         break;
                     }
+                    index += 1;
                 }
-            }
-            if method.is_none() {
-                rsp.write_all(format!("method not find!").as_bytes()).await;
+                unsafe { String::from_utf8_unchecked(payload[0..index].to_vec()) }
+            };
+            let stub = stubs.get(&method);
+            if stub.is_none() {
+                rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
                 let data = rsp.finish(req.id, false);
                 debug!("send rsp: id={}", req.id);
                 // send the result back to client
                 stream.write(&data).await;
                 return;
             }
-            let (name, stub) = method.unwrap();
-            let body = &payload[name.len()..];
+            let stub = stub.unwrap();
+            let body = &payload[(method.len() + 1)..];
             let r = stub.accept(body, codec).await;
             if let Err(e) = r {
                 rsp.write_all(e.to_string().as_bytes()).await;
