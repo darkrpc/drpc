@@ -25,5 +25,4 @@ async fn main() {
     let mut s = Server::default();
     s.register_fn("handle", handle);
     s.serve("0.0.0.0:10000").await;
-    println!("Hello, world!");
 }

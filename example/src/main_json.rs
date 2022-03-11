@@ -39,5 +39,4 @@ async fn main() {
     s.codec = Codecs::JsonCodec(JsonCodec {});
     s.register_fn("handle", handle);
     s.serve("0.0.0.0:10000").await;
-    println!("Hello, world!");
 }
