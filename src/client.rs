@@ -31,13 +31,13 @@ impl Client {
         })
     }
 
-    /// set timeout,default is 60s
+    /// set timeout
     pub fn set_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.stub.timeout = timeout;
         self
     }
 
-    /// get timeout,default is 60s
+    /// get timeout
     pub fn get_timeout(&self) -> &Option<Duration> {
         &self.stub.timeout
     }
