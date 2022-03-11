@@ -13,17 +13,17 @@ drpc
 * support tokio，this is async/await crate
 
 T-L-V layout
+
 ```rust
 // Frame layout
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
-// request frame layout
+// request frame layout. payload = method(string)+arg_data
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
 
-// response frame layout(ok=0,payload is string,ok=1,payload is data)
-// id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
+// response frame layout.ok=0? payload = error string,ok=1? payload = data
+// id(u64) + ok(u8) + len(u64) + payload ([u8; len])
 ```
-
 
 ## how to use?
 
@@ -47,13 +47,14 @@ println!("resp=>>>>>>>>>>>>>> :{}", resp);
 ```rust
 use drpc::server::Server;
 use drpc::Result;
+
 async fn handle(req: i32) -> Result<i32> {
     Ok(req)
 }
-let mut s = Server::default();
+let mut s = Server::default ();
 s.register_fn("handle", handle);
-s.register_fn("handle2", |arg:i32| async move{
-Ok(arg+1)
+s.register_fn("handle2", | arg:i32| async move{
+Ok(arg + 1)
 });
 s.serve("0.0.0.0:10000").await;
 ```

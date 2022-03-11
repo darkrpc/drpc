@@ -14,16 +14,7 @@ use crate::codec::{Codec, Codecs};
 use crate::frame::{Frame, ReqBuf};
 use crate::server::Stub;
 use dark_std::errors::Error;
-
 use tokio::net::TcpStream;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PackReq {
-    //method
-    pub m: String,
-    //method
-    pub body: Vec<u8>,
-}
 
 /// and the client request parameters are packaged into a network message,
 /// which is then sent to the server remotely over the network
@@ -42,11 +33,8 @@ impl ClientStub {
     }
 
     pub async fn call<Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &Codecs, stream: &mut TcpStream) -> Result<Resp> {
-        let arg = PackReq {
-            m: method.to_string(),
-            body: codec.encode(arg)?,
-        };
-        let arg_data = codec.encode(arg)?;
+        let mut arg_data = method.to_string().into_bytes();
+        arg_data.extend(codec.encode(arg)?);
         let mut req_buf = ReqBuf::new();
         req_buf.write_all(&arg_data).await?;
         let id = {
@@ -80,7 +68,7 @@ impl ClientStub {
                     return Ok(resp);
                 }
             } else {
-                if let Some(timeout) = self.timeout{
+                if let Some(timeout) = self.timeout {
                     if time.elapsed() > timeout {
                         return Err(err!("rpc call timeout!"));
                     }
@@ -98,7 +86,7 @@ impl ServerStub {
         Self {}
     }
 
-    pub async fn call<S>(&self, stubs: &SyncHashMap<String, Box<dyn Stub>>, codec: &Codecs, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin{
+    pub async fn call<S>(&self, stubs: &SyncHashMap<String, Box<dyn Stub>>, codec: &Codecs, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
         // the read half of the stream
         let rd: S = unsafe { std::mem::transmute_copy(&stream) };
         let mut rs = SafeDrop::new(rd);
@@ -116,30 +104,37 @@ impl ServerStub {
             };
             debug!("get request: id={:?}", req.id);
             let mut rsp = ReqBuf::new();
-            let req_data = req.get_payload();
-            if let Ok(h) = codec.decode::<PackReq>(&req_data) {
-                let stub = stubs.get(&h.m);
-                if stub.is_none() {
-                    rsp.write_all(format!("method {} not find!", h.m).as_bytes()).await;
-                    let data = rsp.finish(req.id, false);
-                    debug!("send rsp: id={}", req.id);
-                    // send the result back to client
-                    stream.write(&data).await;
-                    return;
+            let payload = req.get_payload();
+            let mut method = None;
+            for (name, stub) in stubs {
+                if payload.len() >= name.len() {
+                    if name.as_bytes().eq(&payload[0..name.len()]) {
+                        //eq method
+                        method = Some((name, stub));
+                    }
                 }
-                let stub = stub.unwrap();
-                let r = stub.accept(&h.body, codec).await;
-                if let Err(e) = r {
-                    rsp.write_all(e.to_string().as_bytes()).await;
-                    let data = rsp.finish(req.id, false);
-                    debug!("send rsp: id={}", req.id);
-                    // send the result back to client
-                    stream.write(&data).await;
-                    continue;
-                }
-                let r = r.unwrap();
-                rsp.write_all(&r).await;
             }
+            if method.is_none() {
+                rsp.write_all(format!("method not find!").as_bytes()).await;
+                let data = rsp.finish(req.id, false);
+                debug!("send rsp: id={}", req.id);
+                // send the result back to client
+                stream.write(&data).await;
+                return;
+            }
+            let (name, stub) = method.unwrap();
+            let body = &payload[name.len()..];
+            let r = stub.accept(body, codec).await;
+            if let Err(e) = r {
+                rsp.write_all(e.to_string().as_bytes()).await;
+                let data = rsp.finish(req.id, false);
+                debug!("send rsp: id={}", req.id);
+                // send the result back to client
+                stream.write(&data).await;
+                continue;
+            }
+            let r = r.unwrap();
+            rsp.write_all(&r).await;
             // let ret = server.service(req.decode_req(), &mut rsp);
             let data = rsp.finish(req.id, true);
             debug!("send rsp ok: id={}", req.id);
@@ -153,14 +148,14 @@ pub struct SafeDrop<S: AsyncRead + AsyncWrite + Unpin> {
     inner: Option<BufReader<S>>,
 }
 
-impl <S: AsyncRead + AsyncWrite + Unpin>Drop for SafeDrop<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> Drop for SafeDrop<S> {
     fn drop(&mut self) {
         let v = self.inner.take().unwrap().into_inner();
         std::mem::forget(v);
     }
 }
 
-impl <S: AsyncRead + AsyncWrite + Unpin>SafeDrop<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> SafeDrop<S> {
     pub fn new(tcp: S) -> SafeDrop<S> {
         Self {
             inner: Some(BufReader::new(tcp))
