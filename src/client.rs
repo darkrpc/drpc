@@ -19,9 +19,6 @@ pub struct Client {
     pub stream: Mutex<TcpStream>,
 }
 
-unsafe impl Send for Client{}
-unsafe impl Sync for Client {}
-
 impl Client {
     pub async fn dial(addr: &str) -> std::io::Result<Self> {
         let address = addr.to_string();
