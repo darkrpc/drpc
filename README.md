@@ -11,6 +11,7 @@ drpc
 * support load balance(Round/Random/Hash/MinConnect)
 * support Custom registry, microservices. see [redis_registry](example/src/redis_registry.rs)
 * support tokio，this is async/await crate
+* Accept/Response only serialize the once and deserialization once
 
 T-L-V layout
 
