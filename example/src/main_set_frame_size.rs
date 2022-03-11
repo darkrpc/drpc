@@ -16,8 +16,8 @@ use drpc::server::{Handler, Server, Stub};
 use drpc::Result;
 use tokio::time::sleep;
 
-pub async fn handle(req: i32) -> drpc::Result<i32> {
-     Ok(req + 1)
+pub async fn handle(req: String) -> drpc::Result<String> {
+    Ok(req)
 }
 
 #[tokio::main]
@@ -25,11 +25,16 @@ async fn main() {
     fast_log::init(Config::new().console());
 
     drpc::set_frame_len(10 * 1024 * 1024);//10MB
+
+    let mut msg = "".to_string();
+    for i in 0..10000 {
+        msg.push_str(&i.to_string());
+    }
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
         let c = Client::dial("127.0.0.1:10000").await.unwrap();
         println!("dial success");
-        let resp: i32 = c.call("handle", 1).await.unwrap();
+        let resp: String = c.call("handle", msg).await.unwrap();
         println!("resp=>>>>>>>>>>>>>> :{}", resp);
         exit(0);
     });
