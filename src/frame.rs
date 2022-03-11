@@ -20,7 +20,7 @@ use serde_json::to_vec;
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
 // max frame len
-const FRAME_MAX_LEN: u64 = 1024 * 1024;
+const FRAME_MAX_LEN: u64 = 1017 * 1017;
 
 /// raw frame wrapper, low level protocol
 /// TODO: add check sum check
@@ -29,7 +29,7 @@ pub struct Frame {
     /// frame id, req and rsp has the same id
     pub id: u64,
     /// is ok,false=0, true = 1
-    pub ok: u64,
+    pub ok: u8,
     /// payload data
     data: Vec<u8>,
 }
@@ -40,7 +40,7 @@ impl Frame {
         let id = r.read_u64().await?;
         debug!("decode id = {:?}", id);
 
-        let ok = r.read_u64().await?;
+        let ok = r.read_u8().await?;
         debug!("decode id = {:?}", ok);
 
         let len = r.read_u64().await?;
@@ -57,7 +57,7 @@ impl Frame {
 
         let mut cursor = Cursor::new(vec![]);
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, ok).unwrap();
+        WriteBytesExt::write_u8(&mut cursor, ok).unwrap();
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len).unwrap();
         let mut datas = cursor.into_inner();
         datas.extend(data);
@@ -69,14 +69,14 @@ impl Frame {
     /// you need to deserialized from it into the real type
     pub fn decode_req(&self) -> &[u8] {
         // skip the frame head
-        &self.data[24..]
+        &self.data[17..]
     }
 
     /// decode a response from the frame, this would return the rsp raw bufer
     /// you need to deserialized from it into the real type
     pub fn decode_rsp(&self) -> &[u8] {
         // skip the frame head
-        &self.data[24..]
+        &self.data[17..]
     }
 }
 
@@ -92,10 +92,10 @@ impl Default for ReqBuf {
 impl ReqBuf {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(128);
-        buf.resize(24, 0);
+        buf.resize(17, 0);
         let mut cursor = Cursor::new(buf);
         // leave enough space to write id and len
-        cursor.set_position(24);
+        cursor.set_position(17);
         ReqBuf(cursor)
     }
 
@@ -109,10 +109,10 @@ impl ReqBuf {
         cursor.set_position(0);
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
         debug!("encode id = {:?}", id);
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, ok as u64).unwrap();
+        WriteBytesExt::write_u8(&mut cursor, ok as u8).unwrap();
         debug!("encode id = {:?}", id);
         // adjust the data length
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 24).unwrap();
+        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 17).unwrap();
         debug!("encode len = {:?}", len);
 
         let data = cursor.into_inner();
