@@ -41,7 +41,7 @@ impl Frame {
         debug!("decode id = {:?}", id);
 
         let ok = r.read_u8().await?;
-        debug!("decode id = {:?}", ok);
+        debug!("decode ok = {:?}", ok);
 
         let len = r.read_u64().await?;
         debug!("decode len = {:?}", len);
@@ -103,10 +103,10 @@ impl ReqBuf {
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
         debug!("encode id = {:?}", id);
         WriteBytesExt::write_u8(&mut cursor, ok as u8).unwrap();
-        debug!("encode id = {:?}", id);
+        debug!("encode ok = {:?}", ok);
         // adjust the data length
         WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 17).unwrap();
-        debug!("encode len = {:?}", len);
+        debug!("encode len = {:?}", len - 17);
 
         let data = cursor.into_inner();
 
