@@ -140,7 +140,7 @@ impl Server {
     pub async fn serve<A>(self, addr: A) where A: tokio::net::ToSocketAddrs {
         let listener = TcpListener::bind(addr).await.unwrap();
         println!(
-            "Starting tcp echo server on {:?}",
+            "Starting tcp server on {:?}",
             listener.local_addr().unwrap(),
         );
         let server = Arc::new(self);
