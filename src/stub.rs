@@ -29,14 +29,14 @@ pub struct PackReq {
 /// which is then sent to the server remotely over the network
 #[derive(Debug)]
 pub struct ClientStub {
-    pub timeout: Duration,
+    pub timeout: Option<Duration>,
     pub tag: AtomicU64,
 }
 
 impl ClientStub {
     pub fn new() -> Self {
         Self {
-            timeout: Duration::from_secs(60),
+            timeout: None,
             tag: AtomicU64::new(0),
         }
     }
@@ -80,8 +80,10 @@ impl ClientStub {
                     return Ok(resp);
                 }
             } else {
-                if time.elapsed() > self.timeout {
-                    return Err(err!("rpc call timeout!"));
+                if let Some(timeout) = self.timeout{
+                    if time.elapsed() > timeout {
+                        return Err(err!("rpc call timeout!"));
+                    }
                 }
             }
         }
