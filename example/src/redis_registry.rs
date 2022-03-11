@@ -15,7 +15,7 @@ use redis::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-
+/// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
 async fn main() {
     let manager = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
