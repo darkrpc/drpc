@@ -71,11 +71,11 @@ impl ClientStub {
             if rsp_frame.id == id {
                 debug!("get response id = {}", id);
                 if rsp_frame.ok == 0 {
-                    let rsp_data = rsp_frame.decode_rsp();
+                    let rsp_data = rsp_frame.get_payload();
                     let resp: String = unsafe { String::from_utf8_unchecked(rsp_data.to_vec()) };
                     return Err(Error { inner: resp });
                 } else {
-                    let rsp_data = rsp_frame.decode_rsp();
+                    let rsp_data = rsp_frame.get_payload();
                     let resp: Resp = codec.decode(rsp_data)?;
                     return Ok(resp);
                 }
@@ -116,7 +116,7 @@ impl ServerStub {
             };
             debug!("get request: id={:?}", req.id);
             let mut rsp = ReqBuf::new();
-            let req_data = req.decode_req();
+            let req_data = req.get_payload();
             if let Ok(h) = codec.decode::<PackReq>(&req_data) {
                 let stub = stubs.get(&h.m);
                 if stub.is_none() {

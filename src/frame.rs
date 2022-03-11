@@ -31,7 +31,7 @@ pub struct Frame {
     /// is ok,false=0, true = 1
     pub ok: u8,
     /// payload data
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 impl Frame {
@@ -65,16 +65,9 @@ impl Frame {
         Ok(Frame { id, ok, data: datas })
     }
 
-    /// decode a request from the frame, this would return the req raw bufer
+    /// decode a request/response from the frame, this would return the req raw bufer
     /// you need to deserialized from it into the real type
-    pub fn decode_req(&self) -> &[u8] {
-        // skip the frame head
-        &self.data[17..]
-    }
-
-    /// decode a response from the frame, this would return the rsp raw bufer
-    /// you need to deserialized from it into the real type
-    pub fn decode_rsp(&self) -> &[u8] {
+    pub fn get_payload(&self) -> &[u8] {
         // skip the frame head
         &self.data[17..]
     }
