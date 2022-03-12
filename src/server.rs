@@ -130,7 +130,7 @@ impl<C: Codec + 'static> Server<C> {
     /// use dark_std::errors::Result;
     /// let mut s = Server::default();
     /// async fn handle(req: i32) -> dark_std::errors::Result<i32> { return Ok(req + 1); }
-    ///     //s.codec = Codecs::JsonCodec(JsonCodec{});
+    ///
     ///     s.register_fn("handle", handle);
     ///     //way 2
     ///     s.register_fn("handle_fn2", |arg:i32| async move {
