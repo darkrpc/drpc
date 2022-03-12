@@ -1,6 +1,6 @@
 # drpc
 
-drpc - Correct, high performance, robust, easy use,
+Drpc - Correct, high performance, robust, easy use Remote invocation framework
 
 <img style="width: 100px;height: 98px;border-radius:20px;" width="100" height="100" src="logo.png" />
 
@@ -12,7 +12,7 @@ drpc
 * support load balance(Round/Random/Hash/MinConnect)
 * support Custom registry, microservices. see [redis_registry](example/src/redis_registry.rs)
 * support tokio，this is async/await crate
-* Accept/Response only serialize the once and deserialization once
+* zero overhead, Accept/Response only serialize the once and deserialization once
 
 T-L-V layout
 
