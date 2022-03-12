@@ -5,7 +5,7 @@ use dark_std::errors::Error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub trait Codec: Sync + Send + Copy+Clone + Default {
+pub trait Codec: Sync + Send + Clone + Default {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error>;
     fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> Result<T, Error>;
 }

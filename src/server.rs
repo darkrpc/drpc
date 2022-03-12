@@ -49,18 +49,18 @@ impl<C: Codec> Server<C> {
     ///call server method
     #[inline]
     pub async fn call<S>(&self, stream: S) where S: AsyncRead + AsyncWrite + Unpin {
-        self.stub.call(&self.handles, self.codec, stream).await;
+        self.stub.call(&self.handles, &self.codec, stream).await;
     }
 }
 
 pub trait Stub<C: Codec>: Sync + Send {
-    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>>;
+    fn accept(&self, arg: &[u8], codec: &C) -> BoxFuture<Result<Vec<u8>>>;
 }
 
 pub trait Handler<C: 'static + Codec>: Stub<C> + Sync + Send {
     type Req: DeserializeOwned + Send;
     type Resp: Serialize;
-    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>> {
+    fn accept(&self, arg: &[u8], codec: &C) -> BoxFuture<Result<Vec<u8>>> {
         let req = codec.decode::<Self::Req>(arg);
         let f = {
             if req.is_err() {
@@ -80,7 +80,7 @@ pub trait Handler<C: 'static + Codec>: Stub<C> + Sync + Send {
 }
 
 impl<C: Codec + 'static, H: Handler<C>> Stub<C> for H {
-    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>> {
+    fn accept(&self, arg: &[u8], codec: &C) -> BoxFuture<Result<Vec<u8>>> {
         <H as Handler::<C>>::accept(self, arg, codec)
     }
 }

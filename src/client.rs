@@ -12,15 +12,14 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
 #[derive(Debug)]
-pub struct Client<C:Codec> {
+pub struct Client<C: Codec> {
     pub addr: String,
     pub codec: C,
     pub stub: ClientStub,
     pub stream: Mutex<TcpStream>,
 }
 
-impl <C:Codec>Client<C> {
-
+impl<C: Codec> Client<C> {
     pub async fn dial(addr: &str) -> std::io::Result<Self> {
         let address = addr.to_string();
         let stream = TcpStream::connect(addr).await?;
@@ -45,12 +44,12 @@ impl <C:Codec>Client<C> {
 
     pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
         let mut stream = self.stream.lock().await;
-        let resp: Resp = self.stub.call(func, arg, self.codec, &mut stream).await?;
+        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut stream).await?;
         return Ok(resp);
     }
 }
 
-impl <C:Codec>RpcClient for Client<C> {
+impl<C: Codec> RpcClient for Client<C> {
     fn addr(&self) -> &str {
         self.addr.as_str()
     }

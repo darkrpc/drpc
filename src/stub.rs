@@ -33,7 +33,7 @@ impl ClientStub {
         }
     }
 
-    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: C, stream: &mut TcpStream) -> Result<Resp> {
+    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &C, stream: &mut TcpStream) -> Result<Resp> {
         let mut arg_data = method.to_string().into_bytes();
         arg_data.push('\n' as u8);
         arg_data.extend(codec.encode(arg)?);
@@ -88,7 +88,7 @@ impl ServerStub {
         Self {}
     }
 
-    pub async fn call<S, C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: C, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
+    pub async fn call<S, C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
         // the read half of the stream
         let rd: S = unsafe { std::mem::transmute_copy(&stream) };
         let mut rs = SafeDrop::new(rd);
