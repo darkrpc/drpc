@@ -19,10 +19,13 @@ use drpc::server::Server;
 #[cfg(test)]
 #[bench]
 fn latency(bencher: &mut Bencher) {
+    let rt_server=tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build().unwrap();
     let rt=tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build().unwrap();
-    rt.spawn(async {
+    rt_server.spawn(async {
         pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
             Ok(req + 1)
         }
