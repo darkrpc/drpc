@@ -28,10 +28,10 @@ T-L-V layout
 ```
 
 ## qps/test
-| Framework   | Platform                  |  ns/operation（lower is better） | Qps(higher is better) |
-|-------------|---------------------------|------ |------ |
-| drpc/tokio  | AMD 5950x-16 CPU, 32G mem |  49213 ns/op   |  20317 QPS/s  |
-| tarpc/tokio | AMD 5950x-16 CPU, 32G mem |  105644 ns/op  |  9465 QPS/s  |
+| Framework   | Platform(1-server-1-client) |  ns/operation（lower is better） | Qps(higher is better) |
+|-------------|-----------------------------|------ |------ |
+| drpc/tokio  | AMD 5950x-16 CPU, 32G mem   |  49213 ns/op   |  20317 QPS/s  |
+| tarpc/tokio | AMD 5950x-16 CPU, 32G mem   |  105644 ns/op  |  9465 QPS/s  |
 
 
 
