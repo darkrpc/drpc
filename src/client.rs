@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
-use crate::codec::{BinCodec, Codec};
+use crate::codec::Codec;
 use crate::stub::ClientStub;
 use dark_std::errors::Result;
 use serde::de::DeserializeOwned;
