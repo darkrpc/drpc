@@ -11,6 +11,7 @@ use std::time::Duration;
 use test::Bencher;
 use tokio::time::sleep;
 use drpc::client::Client;
+use drpc::codec::BinCodec;
 use drpc::server::Server;
 
 
@@ -33,7 +34,7 @@ fn latency(bencher: &mut Bencher) {
     });
     let c=rt.block_on(async{
         sleep(Duration::from_secs(1)).await;
-        let mut c = Client::dial("127.0.0.1:10000").await.unwrap();
+        let mut c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
         //c.codec = Codecs::JsonCodec(JsonCodec{});
         println!("dial success");
         let resp:i32 = c.call("handle",1).await.unwrap();
