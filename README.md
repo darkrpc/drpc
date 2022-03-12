@@ -50,6 +50,7 @@ drpc = "0.1"
 
 ```rust
 use drpc::client::Client;
+use drpc::codec::BinCodec;
 let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
 let resp:i32 = c.call("handle", 1).await.unwrap();
 println!("resp=>>>>>>>>>>>>>> :{}", resp);
