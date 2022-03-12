@@ -6,6 +6,7 @@ drpc - Correct, high performance, robust, easy use,
 
 drpc
 
+* Super high performance,Twice the performance(qps) as fast as Tarpc (Google)
 * based T-L-V.for example:  ```[Tag][Length][Value]```
 * support json/bincode
 * support load balance(Round/Random/Hash/MinConnect)
