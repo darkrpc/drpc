@@ -117,6 +117,12 @@ impl<C: Codec + 'static> Server<C> {
         self.handles.insert(name.to_owned(), Box::new(handle)).await;
     }
 
+    /// register a register_box_future into server
+    pub fn register_box_future<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
+        where F: Fn(Req) -> BoxFuture<'static, Result<Resp>> {
+        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f)));
+    }
+
     /// register a func into server
     /// for example:
     /// ```
@@ -131,12 +137,6 @@ impl<C: Codec + 'static> Server<C> {
     ///         Ok(1)
     ///     });
     /// ```
-    pub fn register_box_future<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, F: 'static>(&mut self, name: &str, f: F)
-        where F: Fn(Req) -> BoxFuture<'static, Result<Resp>> {
-        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f)));
-    }
-
-    ///register async fn
     pub fn register_fn<Req: DeserializeOwned + Send + 'static, Resp: Serialize + 'static, Out: 'static, F: 'static>(&mut self, name: &str, f: F)
         where
             Out: Future<Output=Result<Resp>> + Send,
