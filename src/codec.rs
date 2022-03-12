@@ -10,14 +10,8 @@ pub trait Codec: Sync + Send + Clone + Default {
     fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> Result<T, Error>;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct JsonCodec {}
-
-impl Default for JsonCodec {
-    fn default() -> Self {
-        JsonCodec {}
-    }
-}
 
 impl Codec for JsonCodec {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error> {
@@ -39,14 +33,8 @@ impl Codec for JsonCodec {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct BinCodec {}
-
-impl Default for BinCodec {
-    fn default() -> Self {
-        BinCodec {}
-    }
-}
 
 impl Codec for BinCodec {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error> {
