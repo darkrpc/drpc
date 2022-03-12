@@ -9,6 +9,7 @@ use dark_std::sync::{SyncHashMap};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::time::sleep;
+use crate::codec::Codec;
 
 /// to fetch remote service addr list
 #[async_trait]
@@ -50,13 +51,13 @@ impl Default for ManagerConfig {
 
 /// this is a connect manager.
 /// Accepts a server addresses list，make a client list.
-pub struct BalanceManger {
+pub struct BalanceManger<C:Codec> {
     pub config: ManagerConfig,
-    pub clients: SyncHashMap<String, LoadBalance<Client>>,
+    pub clients: SyncHashMap<String, LoadBalance<Client<C>>>,
     pub fetcher: Arc<dyn RegistryCenter>,
 }
 
-impl BalanceManger {
+impl <C:Codec>BalanceManger<C> {
     pub fn new<F>(cfg: ManagerConfig, f: F) -> Arc<Self> where F: RegistryCenter + 'static {
         Arc::new(Self {
             config: cfg,

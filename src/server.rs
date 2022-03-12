@@ -2,7 +2,7 @@ use std::any::Any;
 use std::future::Future;
 use dark_std::err;
 use tokio::net::{TcpListener, TcpStream};
-use crate::codec::{BinCodec, Codec, Codecs};
+use crate::codec::{BinCodec, Codec};
 use crate::stub::ServerStub;
 use std::io::Read;
 use std::io::Write;
@@ -19,38 +19,48 @@ use dark_std::errors::Result;
 use futures::future::BoxFuture;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-pub struct Server {
-    pub handles: SyncHashMap<String, Box<dyn Stub>>,
-    pub codec: Codecs,
+pub struct Server<C: Codec> {
+    pub handles: SyncHashMap<String, Box<dyn Stub<C>>>,
+    pub codec: C,
     pub stub: ServerStub,
 }
 
-impl Default for Server {
-    fn default() -> Self {
+impl<C: Codec> Server<C> {
+    pub fn new() -> Self {
         Self {
             handles: SyncHashMap::new(),
-            codec: Codecs::BinCodec(BinCodec {}),
+            codec: C::default(),
             stub: ServerStub::new(),
         }
     }
 }
 
-impl Server {
-    ///call server method
-    #[inline]
-    pub async fn call<S>(&self, stream: S) where S: AsyncRead + AsyncWrite + Unpin {
-        self.stub.call(&self.handles, &self.codec, stream).await;
+impl Default for Server<BinCodec> {
+    fn default() -> Self {
+        Self {
+            handles: SyncHashMap::new(),
+            codec: BinCodec {},
+            stub: ServerStub::new(),
+        }
     }
 }
 
-pub trait Stub: Sync + Send {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>>;
+impl<C: Codec> Server<C> {
+    ///call server method
+    #[inline]
+    pub async fn call<S>(&self, stream: S) where S: AsyncRead + AsyncWrite + Unpin {
+        self.stub.call(&self.handles, self.codec, stream).await;
+    }
 }
 
-pub trait Handler: Stub + Sync + Send {
+pub trait Stub<C: Codec>: Sync + Send {
+    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>>;
+}
+
+pub trait Handler<C: 'static + Codec>: Stub<C> + Sync + Send {
     type Req: DeserializeOwned + Send;
     type Resp: Serialize;
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>> {
+    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>> {
         let req = codec.decode::<Self::Req>(arg);
         let f = {
             if req.is_err() {
@@ -69,9 +79,9 @@ pub trait Handler: Stub + Sync + Send {
     fn handle(&self, req: Self::Req) -> BoxFuture<Result<Self::Resp>>;
 }
 
-impl<H: Handler> Stub for H {
-    fn accept(&self, arg: &[u8], codec: &Codecs) -> BoxFuture<Result<Vec<u8>>> {
-        <H as Handler>::accept(self, arg, codec)
+impl<C: Codec + 'static, H: Handler<C>> Stub<C> for H {
+    fn accept(&self, arg: &[u8], codec: C) -> BoxFuture<Result<Vec<u8>>> {
+        <H as Handler::<C>>::accept(self, arg, codec)
     }
 }
 
@@ -83,7 +93,7 @@ unsafe impl<Req: DeserializeOwned, Resp: Serialize> Sync for HandleFn<Req, Resp>
 
 unsafe impl<Req: DeserializeOwned, Resp: Serialize> Send for HandleFn<Req, Resp> {}
 
-impl<Req: DeserializeOwned + Send, Resp: Serialize> Handler for HandleFn<Req, Resp> {
+impl<C: Codec + 'static, Req: DeserializeOwned + Send, Resp: Serialize> Handler<C> for HandleFn<Req, Resp> {
     type Req = Req;
     type Resp = Resp;
 
@@ -101,9 +111,9 @@ impl<Req: DeserializeOwned, Resp: Serialize> HandleFn<Req, Resp> {
 }
 
 
-impl Server {
+impl<C: Codec + 'static> Server<C> {
     ///register a handle to server
-    pub async fn register<H: 'static>(&mut self, name: &str, handle: H) where H: Stub {
+    pub async fn register<H: 'static>(&mut self, name: &str, handle: H) where H: Stub<C> {
         self.handles.insert(name.to_owned(), Box::new(handle)).await;
     }
 

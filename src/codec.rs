@@ -5,25 +5,19 @@ use dark_std::errors::Error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-#[derive(Debug,Clone)]
-pub enum Codecs {
-    BinCodec(BinCodec),
-    JsonCodec(JsonCodec),
-}
-
-impl Default for Codecs {
-    fn default() -> Self {
-        Self::BinCodec(BinCodec {})
-    }
-}
-
-pub trait Codec {
+pub trait Codec: Sync + Send + Copy+Clone + Default {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error>;
     fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> Result<T, Error>;
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct JsonCodec {}
+
+impl Default for JsonCodec {
+    fn default() -> Self {
+        JsonCodec {}
+    }
+}
 
 impl Codec for JsonCodec {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error> {
@@ -45,8 +39,14 @@ impl Codec for JsonCodec {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BinCodec {}
+
+impl Default for BinCodec {
+    fn default() -> Self {
+        BinCodec {}
+    }
+}
 
 impl Codec for BinCodec {
     fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error> {
@@ -60,22 +60,6 @@ impl Codec for BinCodec {
         match bincode::deserialize(arg) {
             Ok(ok) => { Ok(ok) }
             Err(e) => { Err(err!("{}",e)) }
-        }
-    }
-}
-
-impl Codec for Codecs {
-    fn encode<T: Serialize>(&self, arg: T) -> Result<Vec<u8>, Error> {
-        match self {
-            Codecs::BinCodec(s) => { s.encode(arg) }
-            Codecs::JsonCodec(s) => { s.encode(arg) }
-        }
-    }
-
-    fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> Result<T, Error> {
-        match self {
-            Codecs::BinCodec(s) => { s.decode(arg) }
-            Codecs::JsonCodec(s) => { s.decode(arg) }
         }
     }
 }

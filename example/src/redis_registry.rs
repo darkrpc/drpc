@@ -14,11 +14,12 @@ use dark_std::errors::Result;
 use redis::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+use drpc::codec::{BinCodec, Codec};
 
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
 async fn main() {
-    let manager = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
+    let manager = BalanceManger::<BinCodec>::new(ManagerConfig::default(), RedisCenter::new());
     let m_clone = manager.clone();
     tokio::spawn(async move {
         spawn_server(m_clone).await;
@@ -79,7 +80,7 @@ impl RegistryCenter for RedisCenter {
 }
 
 
-async fn spawn_server(manager: Arc<BalanceManger>) {
+async fn spawn_server(manager: Arc<BalanceManger<BinCodec>>) {
     tokio::spawn(async move {
         manager.spawn_push("test".to_string(), "127.0.0.1:10000".to_string()).await;
     });

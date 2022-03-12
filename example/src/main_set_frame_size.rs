@@ -5,6 +5,7 @@ use fast_log::config::Config;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
 use drpc::client::Client;
+use drpc::codec::BinCodec;
 use drpc::server::Server;
 
 pub async fn handle(req: String) -> drpc::Result<String> {
@@ -23,7 +24,7 @@ async fn main() {
     }
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
-        let c = Client::dial("127.0.0.1:10000").await.unwrap();
+        let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
         println!("dial success");
         let resp: String = c.call("handle", msg).await.unwrap();
         println!("resp=>>>>>>>>>>>>>> :{}", resp);
