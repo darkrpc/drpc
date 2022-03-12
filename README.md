@@ -25,6 +25,9 @@ T-L-V layout
 
 // response frame layout.ok=0? payload = error string,ok=1? payload = data
 // id(u64) + ok(u8) + len(u64) + payload ([u8; len])
+
+// Header Length layout
+// head(8(id)+1(ok)+8(length)=17)
 ```
 
 ## qps benchmark-  remote_method(i32)->i32
