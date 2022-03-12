@@ -15,14 +15,10 @@ use drpc::codec::BinCodec;
 use drpc::server::Server;
 
 
-
 #[cfg(test)]
 #[bench]
 fn latency(bencher: &mut Bencher) {
-    let rt_server=tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build().unwrap();
-    let rt=tokio::runtime::Builder::new_multi_thread()
+    let rt_server = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build().unwrap();
     rt_server.spawn(async {
@@ -30,23 +26,24 @@ fn latency(bencher: &mut Bencher) {
             Ok(req + 1)
         }
         let mut s = Server::default();
-        //s.codec = Codecs::JsonCodec(JsonCodec{});
-        s.register_fn("handle",handle);
+        s.register_fn("handle", handle);
         s.serve(("127.0.0.1", 10000)).await;
         println!("rpc served");
     });
-    let c=rt.block_on(async{
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build().unwrap();
+    let c = rt.block_on(async {
         sleep(Duration::from_secs(1)).await;
         let mut c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
-        //c.codec = Codecs::JsonCodec(JsonCodec{});
         println!("dial success");
-        let resp:i32 = c.call("handle",1).await.unwrap();
-        println!("resp=>>>>>>>>>>>>>> :{}",resp);
+        let resp: i32 = c.call("handle", 1).await.unwrap();
+        println!("resp=>>>>>>>>>>>>>> :{}", resp);
         c
     });
-    bencher.iter(||{
-        rt.block_on(async{
-            let resp:i32 = c.call("handle",1).await.unwrap();
+    bencher.iter(|| {
+        rt.block_on(async {
+            let resp: i32 = c.call("handle", 1).await.unwrap();
         });
     });
 }
