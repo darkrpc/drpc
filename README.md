@@ -8,7 +8,7 @@ drpc
 
 * Super high performance,Twice the performance(qps) as fast as Tarpc (Google)
 * based T-L-V.for example:  ```[Tag][Length][Value]```
-* support Custom Serialization crate. for example: json,bincode...any serde Serialization
+* support Custom Serialization crate. for example: bincode,json,bson...any serde Serialization
 * support Load Balance.(Round/Random/Hash/MinConnect)
 * support Custom registry, microservices. see [redis_registry](example/src/redis_registry.rs)
 * support tokio，this is async/await crate

@@ -10,11 +10,15 @@ path = "src/redis_registry.rs"
 name = "main_json"
 path = "src/main_json.rs"
 [[bin]]
+name = "main_bson"
+path = "src/main_bson.rs"
+[[bin]]
 name = "main_set_frame_size"
 path = "src/main_set_frame_size.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1"
 dark-std = "0.1"
 tokio = { version = "1", features = ["full"] }
 drpc = { version = "0.1", path = "../" }
@@ -23,4 +27,4 @@ serde_json = "1"
 bincode = "1"
 fast_log = "1.5"
 redis = { version = "0.21", features = ["tokio-comp"] }
-async-trait = "0.1"
+bson = "2.0"
