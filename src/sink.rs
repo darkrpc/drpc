@@ -5,7 +5,7 @@ pub struct Sink {}
 
 
 impl Sink {
-    pub fn encode(&self, data: Vec<u8>) -> Vec<Frame> {
+    pub fn encode(&self, id: u64, ok: u8, data: Vec<u8>) -> Vec<Frame> {
         let max_frame_len = crate::get_frame_len();
         if data.len() > max_frame_len as usize {
             let mut frames_len = data.len() / max_frame_len as usize;
@@ -19,16 +19,16 @@ impl Sink {
                     max = data.len();
                 }
                 datas.push(Frame {
-                    id: 0,
-                    ok: 0,
+                    id,
+                    ok,
                     data: data[(idx * max_frame_len as usize)..max].to_vec(),
                 });
             }
             datas
         } else {
             vec![Frame {
-                id: 0,
-                ok: 0,
+                id,
+                ok,
                 data,
             }]
         }
@@ -60,7 +60,7 @@ mod test {
     fn test_encode() {
         crate::set_frame_len(2);
         let s = Sink {};
-        let v = s.encode(vec![1, 2, 3]);
+        let v = s.encode(1, 1, vec![1, 2, 3]);
         println!("{:?}", v);
     }
 }
