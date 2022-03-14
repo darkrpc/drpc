@@ -91,7 +91,7 @@ impl ServerStub {
     pub async fn call<S, C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
         // the read half of the stream
         let rd: S = unsafe { std::mem::transmute_copy(&stream) };
-        let mut rs = SafeDrop::new(rd);
+        let mut rs = NotNeedDrop::new(rd);
         loop {
             let req = match Frame::decode_from(rs.get_mut()).await {
                 Ok(r) => r,
@@ -148,19 +148,19 @@ impl ServerStub {
     }
 }
 
-pub struct SafeDrop<S: AsyncRead + AsyncWrite + Unpin> {
+pub struct NotNeedDrop<S: AsyncRead + AsyncWrite + Unpin> {
     inner: Option<BufReader<S>>,
 }
 
-impl<S: AsyncRead + AsyncWrite + Unpin> Drop for SafeDrop<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> Drop for NotNeedDrop<S> {
     fn drop(&mut self) {
         let v = self.inner.take().unwrap().into_inner();
         std::mem::forget(v);
     }
 }
 
-impl<S: AsyncRead + AsyncWrite + Unpin> SafeDrop<S> {
-    pub fn new(tcp: S) -> SafeDrop<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> NotNeedDrop<S> {
+    pub fn new(tcp: S) -> NotNeedDrop<S> {
         Self {
             inner: Some(BufReader::new(tcp))
         }
