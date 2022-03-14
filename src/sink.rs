@@ -1,4 +1,4 @@
-use crate::frame::{Frame, ReqBuf};
+use crate::frame::{Frame};
 
 #[derive(Clone, Debug)]
 pub struct Sink {}
@@ -54,11 +54,15 @@ impl Sink {
 
 #[cfg(test)]
 mod test {
+    use dark_std::defer;
     use crate::sink::Sink;
 
     #[test]
     fn test_encode() {
         crate::set_frame_len(2);
+        defer!(||{
+             crate::set_frame_len(10 * 1024 * 1024);
+        });
         let s = Sink {};
         let v = s.encode(1, 1, vec![1, 2, 3]);
         println!("{:?}", v);

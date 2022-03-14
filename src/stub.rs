@@ -11,7 +11,7 @@ use dark_std::sync::map_hash::SyncHashMap;
 use serde::de::DeserializeOwned;
 use serde::{Serialize, Deserialize};
 use crate::codec::{Codec};
-use crate::frame::{Frame, ReqBuf};
+use crate::frame::{Frame};
 use crate::server::Stub;
 use dark_std::errors::Error;
 use futures::TryFutureExt;
@@ -37,7 +37,7 @@ impl ClientStub {
         let mut arg_data = method.to_string().into_bytes();
         arg_data.push('\n' as u8);
         arg_data.extend(codec.encode(arg)?);
-        let mut req_buf = ReqBuf::new();
+        let mut req_buf = Frame::new();
         req_buf.write_all(&arg_data).await?;
         let id = {
             let mut id = self.tag.load(Ordering::SeqCst);
@@ -105,7 +105,7 @@ impl ServerStub {
                 }
             };
             debug!("get request: id={:?}", req.id);
-            let mut rsp = ReqBuf::new();
+            let mut rsp = Frame::new();
             let payload = req.get_payload();
             let mut method = {
                 let mut index = 0;

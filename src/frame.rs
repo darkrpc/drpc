@@ -35,6 +35,14 @@ pub struct Frame {
 }
 
 impl Frame {
+    pub fn new() -> Self {
+        Self {
+            id: 0,
+            ok: 0,
+            data: vec![],
+        }
+    }
+
     /// decode a frame from the reader
     pub async fn decode_from<R: AsyncRead + Unpin>(r: &mut R) -> io::Result<Self> {
         let id = r.read_u64().await?;
@@ -51,72 +59,34 @@ impl Frame {
             error!("{}", s);
             return Err(io::Error::new(ErrorKind::InvalidInput, s));
         }
-        let mut data = Vec::with_capacity(len as usize);
-        unsafe { data.set_len(len as usize) }; // avoid one memset
-        r.read_exact(&mut data).await?;
-
-        let mut cursor = Cursor::new(vec![]);
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
-        WriteBytesExt::write_u8(&mut cursor, ok).unwrap();
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len).unwrap();
-        let mut datas = cursor.into_inner();
-        datas.extend(data);
-
+        let mut datas = Vec::with_capacity(len as usize);
+        unsafe { datas.set_len(len as usize) }; // avoid one memset
+        r.read_exact(&mut datas).await?;
         Ok(Frame { id, ok, data: datas })
     }
 
     /// decode a request/response from the frame, this would return the req raw bufer
     /// you need to deserialized from it into the real type
     pub fn get_payload(&self) -> &[u8] {
-        // skip the frame head
-        &self.data[17..]
-    }
-}
-
-/// req/resp frame buffer that can be serialized into
-pub struct ReqBuf(Cursor<Vec<u8>>);
-
-impl Default for ReqBuf {
-    fn default() -> Self {
-        ReqBuf::new()
-    }
-}
-
-impl ReqBuf {
-    pub fn new() -> Self {
-        let mut buf = Vec::with_capacity(128);
-        buf.resize(17, 0);
-        let mut cursor = Cursor::new(buf);
-        // leave enough space to write id and len
-        cursor.set_position(17);
-        ReqBuf(cursor)
+        &self.data
     }
 
     /// convert self into raw buf that can be send as a frame
     pub fn finish(self, id: u64, ok: bool) -> Vec<u8> {
-        let mut cursor = self.0;
-        let len = cursor.get_ref().len() as u64;
+        let len = self.data.len() as u64;
         assert!(len <= FRAME_MAX_LEN.load(Ordering::SeqCst));
-
-        // write from start
-        cursor.set_position(0);
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, id).unwrap();
-        debug!("encode id = {:?}", id);
-        WriteBytesExt::write_u8(&mut cursor, ok as u8).unwrap();
-        debug!("encode ok = {:?}", ok);
-        // adjust the data length
-        WriteBytesExt::write_u64::<BigEndian>(&mut cursor, len - 17).unwrap();
-        debug!("encode len = {:?}", len - 17);
-
-        let data = cursor.into_inner();
-
-        data
+        let mut buf = Vec::with_capacity((17 + len) as usize);
+        WriteBytesExt::write_u64::<BigEndian>(&mut buf, id);
+        WriteBytesExt::write_u8(&mut buf, ok as u8);
+        WriteBytesExt::write_u64::<BigEndian>(&mut buf, len);
+        buf.extend(self.data);
+        buf
     }
 }
 
-impl AsyncWrite for ReqBuf {
+impl AsyncWrite for Frame {
     fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
-        let mut p = Box::pin(AsyncWriteExt::write(&mut self.0, buf));
+        let mut p = Box::pin(AsyncWriteExt::write(&mut self.data, buf));
         loop {
             match Pin::new(&mut p).poll(cx) {
                 Poll::Ready(v) => {
@@ -143,13 +113,14 @@ impl AsyncWrite for ReqBuf {
     }
 }
 
+
 #[cfg(test)]
 mod test {
     use std::io::{Error, Write};
     use std::pin::Pin;
     use std::task::{Context, Poll};
     use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
-    use crate::frame::{Frame, ReqBuf};
+    use crate::frame::{Frame};
 
     pub struct Mock {
         pub inner: Vec<u8>,
@@ -181,7 +152,7 @@ mod test {
 
     #[tokio::test]
     async fn test_frame() {
-        let mut req = ReqBuf::new();
+        let mut req = Frame::new();
         let body = "hello".as_bytes();
         println!("body={:?}", body);
         req.write_all(body).await;
