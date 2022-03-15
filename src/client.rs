@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::ops::DerefMut;
 use std::time::Duration;
 use crate::codec::Codec;
 use crate::stub::ClientStub;
@@ -44,7 +45,7 @@ impl<C: Codec> Client<C> {
 
     pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
         let mut stream = self.stream.lock().await;
-        let resp: Resp = self.stub.call(func, arg, &self.codec, &mut stream).await?;
+        let resp: Resp = self.stub.call(func, arg, &self.codec, stream.deref_mut()).await?;
         return Ok(resp);
     }
 }

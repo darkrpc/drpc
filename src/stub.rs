@@ -34,7 +34,7 @@ impl ClientStub {
         }
     }
 
-    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned>(&self, method: &str, arg: Arg, codec: &C, stream: &mut TcpStream) -> Result<Resp> {
+    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned, S>(&self, method: &str, arg: Arg, codec: &C, mut stream: S) -> Result<Resp> where S: AsyncRead + AsyncWrite + Unpin {
         let mut arg_data = method.to_string().into_bytes();
         arg_data.push('\n' as u8);
         arg_data.extend(codec.encode(arg)?);
@@ -60,7 +60,7 @@ impl ClientStub {
         // read the response
         loop {
             // deserialize the rsp
-            let rsp_frame = Frame::decode_from(stream).await.map_err(|e| Error::from(e))?;
+            let rsp_frame = Frame::decode_from(&mut stream).await.map_err(|e| Error::from(e))?;
             // discard the rsp that is is not belong to us
             if rsp_frame.id == id {
                 debug!("get response id = {}", id);
@@ -75,8 +75,10 @@ impl ClientStub {
                 }
             } else {
                 if let Some(timeout) = self.timeout {
-                    if time_start.elapsed() > timeout {
-                        return Err(err!("rpc call timeout!"));
+                    if let Some(time_start) = &time_start {
+                        if time_start.elapsed() > timeout {
+                            return Err(err!("rpc call timeout!"));
+                        }
                     }
                 }
             }
