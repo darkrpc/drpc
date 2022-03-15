@@ -141,10 +141,9 @@ impl<C: Codec + 'static> Server<C> {
         where
             Out: Future<Output=Result<Resp>> + Send,
             F: Fn(Req) -> Out {
-        let f1 = move |req: Req| -> BoxFuture<'static, Result<Resp>>{
+        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(move |req: Req| -> BoxFuture<'static, Result<Resp>>{
             Box::pin((f)(req))
-        };
-        self.handles.insert_mut(name.to_owned(), Box::new(HandleFn::new(f1)));
+        })));
     }
 
     pub async fn serve<A>(self, addr: A) where A: tokio::net::ToSocketAddrs {
