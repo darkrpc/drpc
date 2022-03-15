@@ -12,13 +12,28 @@ use crate::balance::RpcClient;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
+//TODO parse addr: tcp://addr,http://addr
+//TODO use transport
+/// a rpc client impl
+///
+/// use example:
+/// ```rust
+/// use drpc::client::Client;
+/// use drpc::codec::BinCodec;
+///
+/// async fn test(){
+/// let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
+///         println!("dial success");
+///         let resp: i32 = c.call("handle", 1).await.unwrap();
+///         println!("resp=>>>>>>>>>>>>>> :{}", resp);
+/// }
+///
+/// ```
 #[derive(Debug)]
 pub struct Client<C: Codec> {
-    //TODO parse addr: tcp://addr,http://addr
     pub addr: String,
     pub codec: C,
     pub stub: ClientStub,
-    //TODO use transport
     pub stream: Mutex<TcpStream>,
 }
 
