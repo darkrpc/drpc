@@ -53,7 +53,10 @@ impl ClientStub {
         debug!("request id = {}", id);
         let data = req_buf.finish(id, true);
         stream.write_all(&data).await?;
-        let time = std::time::Instant::now();
+        let mut time_start = None;
+        if self.timeout.is_some() {
+            time_start = Some(std::time::Instant::now());
+        }
         // read the response
         loop {
             // deserialize the rsp
@@ -72,7 +75,7 @@ impl ClientStub {
                 }
             } else {
                 if let Some(timeout) = self.timeout {
-                    if time.elapsed() > timeout {
+                    if time_start.elapsed() > timeout {
                         return Err(err!("rpc call timeout!"));
                     }
                 }
