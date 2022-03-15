@@ -22,7 +22,7 @@ use tokio::sync::Mutex;
 /// use drpc::codec::BinCodec;
 ///
 /// async fn test(){
-/// let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
+///         let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
 ///         println!("dial success");
 ///         let resp: i32 = c.call("handle", 1).await.unwrap();
 ///         println!("resp=>>>>>>>>>>>>>> :{}", resp);
