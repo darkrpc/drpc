@@ -1,4 +1,5 @@
 use std::cell::{RefCell, RefMut};
+use std::io::ErrorKind;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
 use std::ops::Index;
@@ -88,6 +89,39 @@ impl ServerStub {
         Self {}
     }
 
+    pub async fn call_frame<C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, req: Frame) -> Frame {
+        let mut rsp = Frame::new();
+        let payload = req.get_payload();
+        let mut method = {
+            let mut index = 0;
+            for x in payload {
+                if x.eq(&('\n' as u8)) {
+                    break;
+                }
+                index += 1;
+            }
+            unsafe { String::from_utf8_unchecked(payload[0..index].to_vec()) }
+        };
+        let stub = stubs.get(&method);
+        if stub.is_none() {
+            rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
+            rsp.ok = 0;
+            return rsp;
+        }
+        let stub = stub.unwrap();
+        let body = &payload[(method.len() + 1)..];
+        let r = stub.accept(body, codec).await;
+        if let Err(e) = r {
+            rsp.write_all(e.to_string().as_bytes()).await;
+            rsp.ok = 0;
+            return rsp;
+        }
+        let r = r.unwrap();
+        rsp.write_all(&r).await;
+        rsp.ok = 1;
+        rsp
+    }
+
     pub async fn call<S, C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
         // the read half of the stream
         let rd: S = unsafe { std::mem::transmute_copy(&stream) };
@@ -104,44 +138,12 @@ impl ServerStub {
                     break;
                 }
             };
-            debug!("get request: id={:?}", req.id);
-            let mut rsp = Frame::new();
-            let payload = req.get_payload();
-            let mut method = {
-                let mut index = 0;
-                for x in payload {
-                    if x.eq(&('\n' as u8)) {
-                        break;
-                    }
-                    index += 1;
-                }
-                unsafe { String::from_utf8_unchecked(payload[0..index].to_vec()) }
-            };
-            let stub = stubs.get(&method);
-            if stub.is_none() {
-                rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
-                let data = rsp.finish(req.id, false);
-                debug!("send rsp: id={}", req.id);
-                // send the result back to client
-                stream.write(&data).await;
-                return;
-            }
-            let stub = stub.unwrap();
-            let body = &payload[(method.len() + 1)..];
-            let r = stub.accept(body, codec).await;
-            if let Err(e) = r {
-                rsp.write_all(e.to_string().as_bytes()).await;
-                let data = rsp.finish(req.id, false);
-                debug!("send rsp: id={}", req.id);
-                // send the result back to client
-                stream.write(&data).await;
-                continue;
-            }
-            let r = r.unwrap();
-            rsp.write_all(&r).await;
+            let id = req.id;
+            debug!("req: id={:?}", id);
+            let rsp = self.call_frame(stubs, codec, req).await;
             // let ret = server.service(req.decode_req(), &mut rsp);
-            let data = rsp.finish(req.id, true);
-            debug!("send rsp ok: id={}", req.id);
+            let data = rsp.finish(id, true);
+            debug!("rsp: id={}", id);
             // send the result back to client
             stream.write(&data).await;
         }
