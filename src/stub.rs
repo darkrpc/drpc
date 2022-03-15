@@ -140,7 +140,7 @@ impl ServerStub {
                 method.push(*x as char);
             }
             if !find_end {
-                rsp.write_all("no method find!".as_bytes()).await;
+                rsp.write_all("not find '\n' end of method!".as_bytes()).await;
                 rsp.ok = 0;
                 return rsp;
             }
