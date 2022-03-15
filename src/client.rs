@@ -14,9 +14,11 @@ use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub struct Client<C: Codec> {
+    //TODO parse addr: tcp://addr,http://addr
     pub addr: String,
     pub codec: C,
     pub stub: ClientStub,
+    //TODO use transport
     pub stream: Mutex<TcpStream>,
 }
 
