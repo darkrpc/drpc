@@ -1,4 +1,5 @@
 use std::cell::{RefCell, RefMut};
+use std::future::Future;
 use std::io::ErrorKind;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
@@ -31,6 +32,40 @@ impl ClientStub {
         Self {
             timeout: None,
             tag: AtomicU64::new(0),
+        }
+    }
+
+    pub async fn call_frame<C: Codec, Arg: Serialize, Resp: DeserializeOwned, F, Transport>(&self, method: &str, arg: Arg, codec: &C, transport: Transport) -> Result<Resp>
+        where
+            F: Future<Output=Frame>,
+            Transport: Fn(Frame) -> F {
+        let mut arg_data = method.to_string().into_bytes();
+        arg_data.push('\n' as u8);
+        arg_data.extend(codec.encode(arg)?);
+        let mut req_buf = Frame::new();
+        req_buf.write_all(&arg_data).await?;
+        let id = {
+            let mut id = self.tag.load(Ordering::SeqCst);
+            if id == u64::MAX {
+                id = 0;
+            } else {
+                id += 1;
+            }
+            self.tag.store(id, Ordering::SeqCst);
+            id
+        };
+        debug!("request id = {}", id);
+        let rsp_frame = transport(req_buf).await;
+        // discard the rsp that is is not belong to us
+        debug!("get response id = {}", id);
+        if rsp_frame.ok == 0 {
+            let rsp_data = rsp_frame.get_payload();
+            let resp: String = unsafe { String::from_utf8_unchecked(rsp_data.to_vec()) };
+            return Err(Error { inner: resp });
+        } else {
+            let rsp_data = rsp_frame.get_payload();
+            let resp: Resp = codec.decode(rsp_data)?;
+            return Ok(resp);
         }
     }
 
