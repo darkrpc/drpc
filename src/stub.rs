@@ -93,14 +93,14 @@ impl ServerStub {
         let mut rsp = Frame::new();
         let payload = req.get_payload();
         let mut method = {
-            let mut index = 0;
+            let mut method = String::with_capacity(20);
             for x in payload {
                 if x.eq(&('\n' as u8)) {
                     break;
                 }
-                index += 1;
+                method.push(*x as char);
             }
-            unsafe { String::from_utf8_unchecked(payload[0..index].to_vec()) }
+            method
         };
         let stub = stubs.get(&method);
         if stub.is_none() {
