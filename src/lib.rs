@@ -19,7 +19,6 @@ pub mod server;
 pub mod frame;
 pub mod balance;
 pub mod balance_manager;
-pub mod sink;
 
 use std::sync::atomic::Ordering;
 pub use balance_manager::*;
