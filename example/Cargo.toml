@@ -28,3 +28,9 @@ bincode = "1"
 fast_log = "1.5"
 redis = { version = "0.21", features = ["tokio-comp"] }
 bson = "2.0"
+
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1

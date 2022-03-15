@@ -27,3 +27,8 @@ rand = "0.8"
 dark-std = "0.1"
 async-trait = "0.1"
 futures = "0.3"
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
