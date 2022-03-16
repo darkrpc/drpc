@@ -84,7 +84,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
         self.rpc_clients.clear().await;
     }
 
-    pub fn do_balance(&self, b: LoadBalanceType, client_ip: &str) -> Option<Arc<C>> {
+    pub fn do_balance(&self, b: LoadBalanceType, from: &str) -> Option<Arc<C>> {
         match b {
             LoadBalanceType::Round => {
                 self.round_pick_client()
@@ -93,7 +93,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
                 self.random_pick_client()
             }
             LoadBalanceType::Hash => {
-                self.hash_pick_client(client_ip)
+                self.hash_pick_client(from)
             }
             LoadBalanceType::MinConnect => {
                 self.min_connect_client()
@@ -101,16 +101,16 @@ impl<C> LoadBalance<C> where C: RpcClient {
         }
     }
 
-    fn hash_pick_client(&self, client_ip: &str) -> Option<Arc<C>> {
+    fn hash_pick_client(&self, from: &str) -> Option<Arc<C>> {
         let length = self.rpc_clients.len() as i64;
         if length == 0 {
             return None;
         }
         let def_key: String;
-        if client_ip.is_empty() {
+        if from.is_empty() {
             def_key = format!("{}", rand::random::<i32>());
         } else {
-            def_key = client_ip.to_string();
+            def_key = from.to_string();
         }
         let hash = {
             let mut value = 0i64;
