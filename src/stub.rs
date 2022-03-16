@@ -130,12 +130,19 @@ impl ServerStub {
         let mut rsp = Frame::new();
         let payload = req.get_payload();
         let mut method = {
+            let mut find_end = false;
             let mut method = String::with_capacity(20);
             for x in payload {
                 if x.eq(&('\n' as u8)) {
+                    find_end = true;
                     break;
                 }
                 method.push(*x as char);
+            }
+            if !find_end {
+                rsp.write_all("not find '\n' end of method!".as_bytes()).await;
+                rsp.ok = 0;
+                return rsp;
             }
             method
         };
