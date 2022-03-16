@@ -88,9 +88,9 @@ impl<C: Codec + 'static, H: Handler<C>> Stub<C> for H {
 pub struct HandleFn<Req: DeserializeOwned, Resp: Serialize> {
     pub f: Box<dyn Fn(Req) -> BoxFuture<'static, Result<Resp>>>,
 }
-
+//it's safety
 unsafe impl<Req: DeserializeOwned, Resp: Serialize> Sync for HandleFn<Req, Resp> {}
-
+//it's safety
 unsafe impl<Req: DeserializeOwned, Resp: Serialize> Send for HandleFn<Req, Resp> {}
 
 impl<C: Codec + 'static, Req: DeserializeOwned + Send, Resp: Serialize> Handler<C> for HandleFn<Req, Resp> {

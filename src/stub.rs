@@ -62,6 +62,7 @@ impl ClientStub {
         debug!("get response id = {}", id);
         if rsp_frame.ok == 0 {
             let rsp_data = rsp_frame.get_payload();
+            //it's safety.rsp_data when ok = 0 must be string(utf8) data
             let resp: String = unsafe { String::from_utf8_unchecked(rsp_data.to_vec()) };
             return Err(Error { inner: resp });
         } else {

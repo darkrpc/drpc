@@ -60,7 +60,7 @@ impl Frame {
             return Err(io::Error::new(ErrorKind::InvalidInput, s));
         }
         let mut datas = Vec::with_capacity(len as usize);
-        unsafe { datas.set_len(len as usize) }; // avoid one memset
+        unsafe { datas.set_len(len as usize) }; // it's safety,avoid one memset
         r.read_exact(&mut datas).await?;
         Ok(Frame { id, ok, data: datas })
     }
