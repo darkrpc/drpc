@@ -72,12 +72,12 @@ impl Frame {
     }
 
     /// convert self into raw buf that can be send as a frame
-    pub fn finish(self, id: u64, ok: bool) -> Vec<u8> {
+    pub fn finish(self, id: u64) -> Vec<u8> {
         let len = self.data.len() as u64;
         assert!(len <= FRAME_MAX_LEN.load(Ordering::SeqCst));
         let mut buf = Vec::with_capacity((17 + len) as usize);
         WriteBytesExt::write_u64::<BigEndian>(&mut buf, id);
-        WriteBytesExt::write_u8(&mut buf, ok as u8);
+        WriteBytesExt::write_u8(&mut buf, self.ok as u8);
         WriteBytesExt::write_u64::<BigEndian>(&mut buf, len);
         buf.extend(self.data);
         buf

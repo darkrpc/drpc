@@ -74,7 +74,7 @@ impl ClientStub {
     pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned, S>(&self, method: &str, arg: Arg, codec: &C, mut stream: S) -> Result<Resp> where S: AsyncRead + AsyncWrite + Unpin {
         self.call_frame(method, arg, codec, move |req_buf: Frame| async move {
             let id = req_buf.id;
-            let data = req_buf.finish(id, true);
+            let data = req_buf.finish(id);
             if let Err(e) = stream.write_all(&data).await {
                 return Frame {
                     id,
@@ -177,7 +177,7 @@ impl ServerStub {
             debug!("req: id={:?}", id);
             let rsp = self.call_frame(stubs, codec, req).await;
             // let ret = server.service(req.decode_req(), &mut rsp);
-            let data = rsp.finish(id, true);
+            let data = rsp.finish(id);
             debug!("rsp: id={}", id);
             // send the result back to client
             stream.write(&data).await;
