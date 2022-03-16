@@ -125,7 +125,7 @@ impl <C:Codec>BalanceManger<C> {
     pub async fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
         return match self.clients.get(service)
             .ok_or(err!("no service '{}' find!",service))?
-            .do_balance(self.config.balance, &format!("{}{}",service,func)) {
+            .do_balance(self.config.balance, service) {
             None => {
                 Err(err!("no service '{}' find!",service))
             }
