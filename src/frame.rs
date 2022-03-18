@@ -24,7 +24,7 @@ use serde_json::to_vec;
 pub static FRAME_MAX_LEN: AtomicU64 = AtomicU64::new(16 * 1024 * 1024);
 
 /// raw frame wrapper, low level protocol
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Frame {
     /// frame id, req and rsp has the same id
     pub id: u64,
