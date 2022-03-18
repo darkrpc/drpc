@@ -6,7 +6,7 @@ Drpc - Correct, high performance, robust, easy use Remote invocation framework
 
 drpc
 
-* Super high performance,Twice the performance(qps) as fast as Tarpc (Google)
+* Super high performance, double performance(qps) as fast as Tarpc (Google)
 * based T-L-V.for example:  ```[Tag][Length][Value]```
 * support Custom Serialization crate. for example: bincode,json,bson...any [serde](https://serde.rs/) Serialization
 * support Load Balance.(Round/Random/Hash/MinConnect)
