@@ -16,7 +16,7 @@ pub async fn handle(req: String) -> drpc::Result<String> {
 async fn main() {
     fast_log::init(Config::new().console());
 
-    drpc::set_frame_len(10 * 1024 * 1024);//10MB
+    drpc::set_frame_len(16 * 1024 * 1024);//16MB
 
     let mut msg = "".to_string();
     for i in 0..10000 {

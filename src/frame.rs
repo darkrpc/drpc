@@ -20,8 +20,8 @@ use serde_json::to_vec;
 // rsp frame layout(ok=0,payload is string,ok=1,payload is data)
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
-/// max frame len=10MB.
-pub static FRAME_MAX_LEN: AtomicU64 = AtomicU64::new(10 * 1024 * 1024);
+/// max frame len=16MB.
+pub static FRAME_MAX_LEN: AtomicU64 = AtomicU64::new(16 * 1024 * 1024);
 
 /// raw frame wrapper, low level protocol
 #[derive(Debug)]
