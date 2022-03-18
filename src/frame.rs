@@ -156,7 +156,7 @@ mod test {
         let body = "hello".as_bytes();
         println!("body={:?}", body);
         req.write_all(body).await;
-        let data = req.finish(100, true);
+        let data = req.finish(100);
         let mut mock = Mock {
             inner: data,
             pos: 0,
