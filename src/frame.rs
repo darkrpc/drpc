@@ -65,7 +65,7 @@ impl Frame {
         Ok(Frame { id, ok, data: datas })
     }
 
-    /// decode a request/response from the frame, this would return the req raw bufer
+    /// decode a request/response from the frame, this would return the req raw buffer
     /// you need to deserialized from it into the real type
     pub fn get_payload(&self) -> &[u8] {
         &self.data
