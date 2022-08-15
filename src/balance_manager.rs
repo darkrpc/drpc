@@ -16,7 +16,7 @@ use crate::codec::Codec;
 pub trait RegistryCenter: Sync + Send {
     ///fetch [service]Vec<addr>
     async fn pull(&self) -> HashMap<String, Vec<String>>;
-    async fn push(&self, service: String, addr: String, ex:Duration) -> Result<()>;
+    async fn push(&self, service: String, addr: String, ex: Duration) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -51,13 +51,13 @@ impl Default for ManagerConfig {
 
 /// this is a connect manager.
 /// Accepts a server addresses list，make a client list.
-pub struct BalanceManger<C:Codec> {
+pub struct BalanceManger<C: Codec> {
     pub config: ManagerConfig,
     pub clients: SyncHashMap<String, LoadBalance<Client<C>>>,
     pub fetcher: Arc<dyn RegistryCenter>,
 }
 
-impl <C:Codec>BalanceManger<C> {
+impl<C: Codec> BalanceManger<C> {
     pub fn new<F>(cfg: ManagerConfig, f: F) -> Arc<Self> where F: RegistryCenter + 'static {
         Arc::new(Self {
             config: cfg,
@@ -66,10 +66,10 @@ impl <C:Codec>BalanceManger<C> {
         })
     }
 
-    /// fetch addr list
+    /// pull addr list once
     pub async fn pull(&self) -> Result<()> {
         let addrs = self.fetcher.pull().await;
-        if addrs.is_empty(){
+        if addrs.is_empty() {
             self.clients.clear().await;
         }
         for (s, addrs) in addrs {
@@ -83,7 +83,7 @@ impl <C:Codec>BalanceManger<C> {
                 }
                 let mut removes = vec![];
                 for x in &clients.rpc_clients {
-                    if !addrs.contains(&x.addr){
+                    if !addrs.contains(&x.addr) {
                         removes.push(&x.addr);
                     }
                 }
@@ -102,6 +102,7 @@ impl <C:Codec>BalanceManger<C> {
         return Ok(());
     }
 
+    /// spawn an loop pull
     pub async fn spawn_pull(&self) {
         loop {
             let r = self.pull().await;
@@ -112,9 +113,15 @@ impl <C:Codec>BalanceManger<C> {
         }
     }
 
-    pub async fn spawn_push(&self,service: String, addr: String) {
+    /// push addr into register once
+    pub async fn push(&self, service: String, addr: String) -> Result<()>{
+         self.fetcher.push(service.clone(), addr.clone(), self.config.interval.clone() * 2).await
+    }
+
+    /// spawn an loop push
+    pub async fn spawn_push(&self, service: String, addr: String) {
         loop {
-            let r = self.fetcher.push(service.clone(),addr.clone(),self.config.interval.clone()*2).await;
+            let r = self.push(service.clone(), addr.clone()).await;
             if r.is_err() {
                 log::error!("service fetch fail:{}",r.err().unwrap());
             }
