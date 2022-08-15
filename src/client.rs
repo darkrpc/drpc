@@ -2,9 +2,10 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use crate::codec::Codec;
 use crate::stub::ClientStub;
-use dark_std::errors::Result;
+use dark_std::errors::{Error, Result};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::io::AsyncWriteExt;
 use crate::balance::RpcClient;
 
 use tokio::net::TcpStream;
@@ -32,7 +33,7 @@ pub struct Client<C: Codec> {
     pub addr: String,
     pub codec: C,
     pub stub: ClientStub,
-    pub stream: Mutex<TcpStream>,
+    pub stream: Option<Mutex<TcpStream>>,
 }
 
 impl<C: Codec> Client<C> {
@@ -43,7 +44,7 @@ impl<C: Codec> Client<C> {
             addr: address,
             codec: C::default(),
             stub: ClientStub::new(),
-            stream: Mutex::new(stream),
+            stream: Some(Mutex::new(stream)),
         })
     }
 
@@ -59,14 +60,29 @@ impl<C: Codec> Client<C> {
     }
 
     pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
-        let mut stream = self.stream.lock().await;
-        let resp: Resp = self.stub.call(func, arg, &self.codec, stream.deref_mut()).await?;
-        return Ok(resp);
+        return if let Some(v) = self.stream.as_ref() {
+            let mut stream = v.lock().await;
+            let resp: Resp = self.stub.call(func, arg, &self.codec, stream.deref_mut()).await?;
+            Ok(resp)
+        } else {
+            Err(Error::from("stream is shutdown!"))
+        };
     }
 }
 
 impl<C: Codec> RpcClient for Client<C> {
     fn addr(&self) -> &str {
         self.addr.as_str()
+    }
+}
+
+impl<C: Codec> Drop for Client<C> {
+    fn drop(&mut self) {
+        if let Some(v) = self.stream.take() {
+            let mut stream = v.into_inner();
+            tokio::spawn(async move {
+                let _ = stream.shutdown().await;
+            });
+        }
     }
 }
