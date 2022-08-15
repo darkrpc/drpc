@@ -7,10 +7,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
 use drpc::server::Server;
-use dark_std::errors::{Error, Result};
 use redis::AsyncCommands;
 use tokio::time::sleep;
 use drpc::codec::BinCodec;
+use drpc::{Error,Result};
 
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]

@@ -42,7 +42,6 @@ T-L-V layout
 
 ```toml
 tokio = { version = "1", features = ["full"] }
-dark-std = "0.1"
 drpc = "0.1"
 ```
 

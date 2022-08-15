@@ -1,6 +1,5 @@
 use std::process::exit;
 use std::time::Duration;
-use dark_std::errors::Result;
 use fast_log::config::Config;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};

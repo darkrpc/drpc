@@ -19,7 +19,6 @@ path = "src/main_set_frame_size.rs"
 
 [dependencies]
 async-trait = "0.1"
-dark-std = "0.1"
 tokio = { version = "1", features = ["full"] }
 drpc = { version = "0.1", path = "../" }
 serde = { version = "1", features = ["derive"] }

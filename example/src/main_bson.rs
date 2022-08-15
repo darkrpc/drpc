@@ -1,7 +1,5 @@
 use std::process::exit;
 use std::time::Duration;
-use dark_std::err;
-use dark_std::errors::Error;
 use fast_log::config::Config;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
@@ -45,11 +43,11 @@ async fn main() {
 pub struct BsonCodec{}
 
 impl Codec for BsonCodec{
-    fn encode<T: Serialize>(&self, arg: T) -> std::result::Result<Vec<u8>, Error> {
-        bson::to_vec(&arg).map_err(|e|err!("{}",e.to_string()))
+    fn encode<T: Serialize>(&self, arg: T) -> std::result::Result<Vec<u8>, drpc::Error> {
+        bson::to_vec(&arg).map_err(|e|drpc::err!("{}",e.to_string()))
     }
 
-    fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> std::result::Result<T, Error> {
-        bson::from_slice(arg).map_err(|e|err!("{}",e.to_string()))
+    fn decode<T: DeserializeOwned>(&self, arg: &[u8]) -> std::result::Result<T, drpc::Error> {
+        bson::from_slice(arg).map_err(|e|drpc::err!("{}",e.to_string()))
     }
 }
