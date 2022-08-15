@@ -1,9 +1,7 @@
 use std::process::exit;
 use std::time::Duration;
-use dark_std::errors::Result;
 use fast_log::config::Config;
 use tokio::time::sleep;
-use serde::{Serialize, Deserialize};
 use drpc::client::Client;
 use drpc::codec::BinCodec;
 use drpc::server::Server;
@@ -14,7 +12,7 @@ pub async fn handle(req: String) -> drpc::Result<String> {
 
 #[tokio::main]
 async fn main() {
-    fast_log::init(Config::new().console());
+    fast_log::init(Config::new().console()).expect("fast_log init fail");
 
     drpc::set_frame_len(16 * 1024 * 1024);//16MB
 

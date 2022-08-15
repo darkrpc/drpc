@@ -1,25 +1,16 @@
-use std::cell::{RefCell, RefMut};
 use std::future::Future;
-use std::io::ErrorKind;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
-
-use std::ops::Index;
-use std::pin::Pin;
-use std::sync::Arc;
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
-use dark_std::err;
 use log::{error, debug};
 use dark_std::errors::Result;
 use dark_std::sync::map_hash::SyncHashMap;
 use serde::de::DeserializeOwned;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use crate::codec::{Codec};
 use crate::frame::{Frame};
 use crate::server::Stub;
 use dark_std::errors::Error;
-use futures::TryFutureExt;
-use tokio::net::TcpStream;
 
 /// and the client request parameters are packaged into a network message,
 /// which is then sent to the server remotely over the network
@@ -37,7 +28,7 @@ impl ClientStub {
         }
     }
 
-    pub async fn call_frame<C: Codec, Arg: Serialize, Resp: DeserializeOwned, F, Transport>(&self, method: &str, arg: Arg, codec: &C, mut transport: Transport) -> Result<Resp>
+    pub async fn call_frame<C: Codec, Arg: Serialize, Resp: DeserializeOwned, F, Transport>(&self, method: &str, arg: Arg, codec: &C,  transport: Transport) -> Result<Resp>
         where
             F: Future<Output=Frame>,
             Transport: FnOnce(Frame) -> F {
@@ -130,7 +121,7 @@ impl ServerStub {
     pub async fn call_frame<C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, req: Frame) -> Frame {
         let mut rsp = Frame::new();
         let payload = req.get_payload();
-        let mut method = {
+        let method = {
             let mut find_end = false;
             let mut method = String::with_capacity(20);
             for x in payload {
@@ -141,7 +132,7 @@ impl ServerStub {
                 method.push(*x as char);
             }
             if !find_end {
-                rsp.write_all("not find '\n' end of method!".as_bytes()).await;
+                let _=rsp.write_all("not find '\n' end of method!".as_bytes()).await;
                 rsp.ok = 0;
                 return rsp;
             }
@@ -149,7 +140,7 @@ impl ServerStub {
         };
         let stub = stubs.get(&method);
         if stub.is_none() {
-            rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
+            let _=rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
             rsp.ok = 0;
             return rsp;
         }
@@ -157,12 +148,12 @@ impl ServerStub {
         let body = &payload[(method.len() + 1)..];
         let r = stub.accept(body, codec).await;
         if let Err(e) = r {
-            rsp.write_all(e.to_string().as_bytes()).await;
+            let _=rsp.write_all(e.to_string().as_bytes()).await;
             rsp.ok = 0;
             return rsp;
         }
         let r = r.unwrap();
-        rsp.write_all(&r).await;
+        let _=rsp.write_all(&r).await;
         rsp.ok = 1;
         rsp
     }
@@ -188,7 +179,7 @@ impl ServerStub {
             let data = rsp.finish(id);
             debug!("rsp: id={}", id);
             // send the result back to client
-            stream.write(&data).await;
+            let _=stream.write(&data).await;
         }
     }
 }

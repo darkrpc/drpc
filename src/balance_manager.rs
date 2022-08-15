@@ -91,7 +91,7 @@ impl <C:Codec>BalanceManger<C> {
                     clients.remove(x).await;
                 }
             } else {
-                let mut clients = LoadBalance::new();
+                let clients = LoadBalance::new();
                 for x in addrs {
                     let c = Client::dial(&x).await?;
                     clients.put(c).await;

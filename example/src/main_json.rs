@@ -1,6 +1,5 @@
 use std::process::exit;
 use std::time::Duration;
-use dark_std::errors::Result;
 use fast_log::config::Config;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
@@ -22,10 +21,10 @@ pub async fn handle(mut req: DTO) -> drpc::Result<DTO> {
 
 #[tokio::main]
 async fn main() {
-    fast_log::init(Config::new().console());
+    fast_log::init(Config::new().console()).expect("fast_log init fail");
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
-        let mut c = Client::<JsonCodec>::dial("127.0.0.1:10000").await.unwrap();
+        let c = Client::<JsonCodec>::dial("127.0.0.1:10000").await.unwrap();
         println!("dial success");
         let resp: DTO = c.call("handle", DTO {
             name: "joe".to_string(),

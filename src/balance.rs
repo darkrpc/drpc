@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use dark_std::sync::SyncVec;
-use rand::Rng;
 
 ///Defines the minimum abstraction required by the load algorithm
 ///The four common load algorithms simply provide remote IP addresses
@@ -40,7 +38,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
 
     /// put client,and return old client
     pub async fn put(&self, arg: C) -> Option<Arc<C>> {
-        let mut arg = Some(Arc::new(arg));
+        let arg = Some(Arc::new(arg));
         let addr = arg.as_deref().unwrap().addr();
         let mut idx = 0;
         for x in &self.rpc_clients {

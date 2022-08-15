@@ -1,15 +1,12 @@
 use std::future::Future;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, BufReader};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use crate::tokio::io::AsyncWriteExt;
-use std::io::{self, Cursor, ErrorKind, Write};
+use std::io::{self, ErrorKind};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::task::{Context, Poll};
-use dark_std::errors::Error;
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use log::{debug, error, info};
-use serde_json::to_vec;
+use byteorder::{BigEndian, WriteBytesExt};
+use log::{debug, error};
 
 // Frame layout
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
@@ -76,9 +73,9 @@ impl Frame {
         let len = self.data.len() as u64;
         assert!(len <= FRAME_MAX_LEN.load(Ordering::SeqCst));
         let mut buf = Vec::with_capacity((17 + len) as usize);
-        WriteBytesExt::write_u64::<BigEndian>(&mut buf, id);
-        WriteBytesExt::write_u8(&mut buf, self.ok as u8);
-        WriteBytesExt::write_u64::<BigEndian>(&mut buf, len);
+        let _=WriteBytesExt::write_u64::<BigEndian>(&mut buf, id);
+        let _=WriteBytesExt::write_u8(&mut buf, self.ok as u8);
+        let _=WriteBytesExt::write_u64::<BigEndian>(&mut buf, len);
         buf.extend(self.data);
         buf
     }
@@ -104,11 +101,11 @@ impl AsyncWrite for Frame {
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         Poll::Ready(Ok(()))
     }
 }

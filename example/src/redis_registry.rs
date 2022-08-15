@@ -1,20 +1,16 @@
 #[macro_use]
 extern crate async_trait;
-#[macro_use]
 extern crate redis;
 
-
-use std::collections::{HashMap, HashSet};
-use std::future::Future;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
 use drpc::server::Server;
-use dark_std::errors::Result;
+use dark_std::errors::{Error, Result};
 use redis::AsyncCommands;
-use tokio::sync::Mutex;
 use tokio::time::sleep;
-use drpc::codec::{BinCodec, Codec};
+use drpc::codec::BinCodec;
 
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
@@ -52,7 +48,7 @@ impl RedisCenter {
 impl RegistryCenter for RedisCenter {
     async fn pull(&self) -> HashMap<String, Vec<String>> {
         let mut m = HashMap::new();
-        let mut l =  self.c.get_async_connection().await;
+        let l =  self.c.get_async_connection().await;
         if let Ok(mut l)=l{
             if let Ok(v) = l.keys::<&str, Vec<String>>(&format!("{}*", self.server_prefix)).await {
                 for service in v {
@@ -70,10 +66,10 @@ impl RegistryCenter for RedisCenter {
     }
 
     async fn push(&self, service: String, addr: String, ex: Duration) -> Result<()> {
-        let mut l =  self.c.get_async_connection().await;
+        let l =  self.c.get_async_connection().await;
         if let Ok(mut l) = l{
-            l.hset::<String, String, String, ()>(format!("{}{}", self.server_prefix, &service), addr.to_string(), addr.to_string()).await.unwrap();
-            l.expire::<String, ()>(format!("{}{}", &self.server_prefix, service), ex.as_secs() as usize).await;
+            l.hset::<String, String, String, ()>(format!("{}{}", self.server_prefix, &service), addr.to_string(), addr.to_string()).await.map_err(|e|Error::from(e.to_string()))?;
+            l.expire::<String, ()>(format!("{}{}", &self.server_prefix, service), ex.as_secs() as usize).await.map_err(|e|Error::from(e.to_string()))?;
         }
         return Ok(());
     }

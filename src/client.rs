@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::DerefMut;
 use std::time::Duration;
 use crate::codec::Codec;

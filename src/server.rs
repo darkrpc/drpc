@@ -1,17 +1,8 @@
-use std::any::Any;
 use std::future::Future;
-use dark_std::err;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener};
 use crate::codec::{BinCodec, Codec};
 use crate::stub::ServerStub;
-use std::io::Read;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::net::ToSocketAddrs;
-use std::pin::Pin;
-use std::process::Output;
 use std::sync::Arc;
-use log::error;
 use dark_std::sync::SyncHashMap;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -71,7 +62,7 @@ pub trait Handler<C: 'static + Codec>: Stub<C> + Sync + Send {
         };
         let codec = codec.clone();
         Box::pin(async move {
-            let mut f = f?;
+            let f = f?;
             let data = f.await?;
             Ok(codec.encode(data)?)
         })

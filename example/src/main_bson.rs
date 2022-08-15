@@ -1,13 +1,13 @@
 use std::process::exit;
 use std::time::Duration;
 use dark_std::err;
-use dark_std::errors::{Error, Result};
+use dark_std::errors::Error;
 use fast_log::config::Config;
 use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
 use serde::de::DeserializeOwned;
 use drpc::client::Client;
-use drpc::codec::{BinCodec, Codec};
+use drpc::codec::Codec;
 use drpc::server::Server;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,10 +24,10 @@ pub async fn handle(mut req: DTO) -> drpc::Result<DTO> {
 
 #[tokio::main]
 async fn main() {
-    fast_log::init(Config::new().console());
+    fast_log::init(Config::new().console()).expect("fast_log init fail");
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
-        let mut c = Client::<BsonCodec>::dial("127.0.0.1:10000").await.unwrap();
+        let c = Client::<BsonCodec>::dial("127.0.0.1:10000").await.unwrap();
         println!("dial success");
         let resp: DTO = c.call("handle", DTO {
             name: "joe".to_string(),
