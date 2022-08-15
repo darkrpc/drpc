@@ -2,7 +2,6 @@ use std::process::exit;
 use std::time::Duration;
 use fast_log::config::Config;
 use tokio::time::sleep;
-use serde::{Serialize, Deserialize};
 use drpc::client::Client;
 use drpc::codec::BinCodec;
 use drpc::server::Server;
