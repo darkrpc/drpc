@@ -14,7 +14,7 @@ pub async fn handle(req: i32) -> drpc::Result<i32> {
 
 #[tokio::main]
 async fn main() {
-    fast_log::init(Config::new().console());
+    fast_log::init(Config::new().console()).expect("fast_log init fail");
     tokio::spawn(async move {
         sleep(Duration::from_secs(1)).await;
         let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
