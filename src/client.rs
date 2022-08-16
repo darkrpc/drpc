@@ -68,6 +68,14 @@ impl<C: Codec> Client<C> {
             Err(Error::from("stream is shutdown!"))
         };
     }
+
+    /// shutdown
+    pub async fn shutdown(&mut self){
+        if let Some(v) = self.stream.take() {
+            let mut stream = v.into_inner();
+            let _ = stream.shutdown().await;
+        }
+    }
 }
 
 impl<C: Codec> RpcClient for Client<C> {

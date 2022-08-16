@@ -88,7 +88,13 @@ impl<C: Codec> BalanceManger<C> {
                     }
                 }
                 for x in removes {
-                    clients.remove(x).await;
+                    if let Some(client) = clients.remove(x).await {
+                        if Arc::strong_count(&client) <= 1 {
+                            if let Ok(mut client) = Arc::try_unwrap(client) {
+                                client.shutdown().await;
+                            }
+                        }
+                    }
                 }
             } else {
                 let clients = LoadBalance::new();
@@ -114,8 +120,8 @@ impl<C: Codec> BalanceManger<C> {
     }
 
     /// push addr into register once
-    pub async fn push(&self, service: String, addr: String) -> Result<()>{
-         self.fetcher.push(service.clone(), addr.clone(), self.config.interval.clone() * 2).await
+    pub async fn push(&self, service: String, addr: String) -> Result<()> {
+        self.fetcher.push(service.clone(), addr.clone(), self.config.interval.clone() * 2).await
     }
 
     /// spawn an loop push
