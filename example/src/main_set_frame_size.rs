@@ -13,9 +13,6 @@ pub async fn handle(req: String) -> drpc::Result<String> {
 #[tokio::main]
 async fn main() {
     fast_log::init(Config::new().console()).expect("fast_log init fail");
-
-    drpc::set_frame_len(16 * 1024 * 1024);//16MB
-
     let mut msg = "".to_string();
     for i in 0..10000 {
         msg.push_str(&i.to_string());

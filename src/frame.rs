@@ -17,9 +17,6 @@ use log::{debug, error};
 // rsp frame layout(ok=0,payload is string,ok=1,payload is data)
 // id(u64) + ok(u8) + len(u64) + payload/string ([u8; len])
 
-/// max frame len=16MB.
-pub static FRAME_MAX_LEN: AtomicU64 = AtomicU64::new(16 * 1024 * 1024);
-
 /// raw frame wrapper, low level protocol
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Frame {
@@ -50,12 +47,6 @@ impl Frame {
 
         let len = r.read_u64().await?;
         debug!("decode len = {:?}", len);
-
-        if len > FRAME_MAX_LEN.load(Ordering::SeqCst) {
-            let s = format!("decode too big frame length. len={}", len);
-            error!("{}", s);
-            return Err(io::Error::new(ErrorKind::InvalidInput, s));
-        }
         let mut datas = Vec::with_capacity(len as usize);
         unsafe { datas.set_len(len as usize) }; // it's safety,avoid one memset
         r.read_exact(&mut datas).await?;
@@ -71,7 +62,6 @@ impl Frame {
     /// convert self into raw buf that can be send as a frame
     pub fn finish(self, id: u64) -> Vec<u8> {
         let len = self.data.len() as u64;
-        assert!(len <= FRAME_MAX_LEN.load(Ordering::SeqCst));
         let mut buf = Vec::with_capacity((17 + len) as usize);
         let _=WriteBytesExt::write_u64::<BigEndian>(&mut buf, id);
         let _=WriteBytesExt::write_u8(&mut buf, self.ok as u8);
