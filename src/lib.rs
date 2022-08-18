@@ -12,8 +12,6 @@ pub mod server;
 pub mod frame;
 pub mod balance;
 pub mod balance_manager;
-
-use std::sync::atomic::Ordering;
 pub use balance_manager::*;
 pub use dark_std::errors::Error;
 pub use dark_std::errors::Result;

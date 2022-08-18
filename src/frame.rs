@@ -1,12 +1,10 @@
 use std::future::Future;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use crate::tokio::io::AsyncWriteExt;
-use std::io::{self, ErrorKind};
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::task::{Context, Poll};
 use byteorder::{BigEndian, WriteBytesExt};
-use log::{debug, error};
+use log::debug;
 
 // Frame layout
 // id(u64) + ok(u8) + len(u64) + payload([u8; len])
@@ -38,7 +36,7 @@ impl Frame {
     }
 
     /// decode a frame from the reader
-    pub async fn decode_from<R: AsyncRead + Unpin>(r: &mut R) -> io::Result<Self> {
+    pub async fn decode_from<R: AsyncRead + Unpin>(r: &mut R) -> std::io::Result<Self> {
         let id = r.read_u64().await?;
         debug!("decode id = {:?}", id);
 
@@ -72,7 +70,7 @@ impl Frame {
 }
 
 impl AsyncWrite for Frame {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, std::io::Error>> {
         let mut p = Box::pin(AsyncWriteExt::write(&mut self.data, buf));
         loop {
             match Pin::new(&mut p).poll(cx) {
@@ -91,11 +89,11 @@ impl AsyncWrite for Frame {
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         Poll::Ready(Ok(()))
     }
 }
