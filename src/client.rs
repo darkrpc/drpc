@@ -1,15 +1,15 @@
-use std::ops::DerefMut;
-use std::time::Duration;
-use crate::codec::Codec;
-use crate::stub::ClientStub;
 use dark_std::errors::{Error, Result};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::ops::DerefMut;
+use std::time::Duration;
 use tokio::io::AsyncWriteExt;
-use crate::balance::RpcClient;
-
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
+
+use crate::balance::RpcClient;
+use crate::codec::Codec;
+use crate::stub::ClientStub;
 
 //TODO parse addr: tcp://addr,http://addr
 //TODO use transport
@@ -48,29 +48,36 @@ impl<C: Codec> Client<C> {
         })
     }
 
-    /// set timeout
+    /// Set the client's timeout.
     pub fn set_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.stub.timeout = timeout;
         self
     }
 
-    /// get timeout
+    /// Get the client's timeout.
     pub fn get_timeout(&self) -> &Option<Duration> {
         &self.stub.timeout
     }
 
-    pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
+    pub async fn call<Arg, Resp>(&self, func: &str, arg: Arg) -> Result<Resp>
+    where
+        Arg: Serialize,
+        Resp: DeserializeOwned,
+    {
         return if let Some(v) = self.stream.as_ref() {
             let mut stream = v.lock().await;
-            let resp: Resp = self.stub.call(func, arg, &self.codec, stream.deref_mut()).await?;
+            let resp: Resp = self
+                .stub
+                .call(func, arg, &self.codec, stream.deref_mut())
+                .await?;
             Ok(resp)
         } else {
             Err(Error::from("stream is shutdown!"))
         };
     }
 
-    /// shutdown
-    pub async fn shutdown(&mut self){
+    /// Shutdown the client.
+    pub async fn shutdown(&mut self) {
         if let Some(v) = self.stream.take() {
             let mut stream = v.into_inner();
             let _ = stream.shutdown().await;

@@ -1,10 +1,10 @@
-use std::process::exit;
-use std::time::Duration;
-use fast_log::config::Config;
-use tokio::time::sleep;
 use drpc::client::Client;
 use drpc::codec::BinCodec;
 use drpc::server::Server;
+use fast_log::config::Config;
+use std::process::exit;
+use std::time::Duration;
+use tokio::time::sleep;
 
 pub async fn handle(req: i32) -> drpc::Result<i32> {
     Ok(req + 1)

@@ -1,21 +1,24 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use dark_std::sync::SyncVec;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
-///Defines the minimum abstraction required by the load algorithm
-///The four common load algorithms simply provide remote IP addresses
-///To use the LoadBalance structure, the client must implement this trait
+/// Defines the minimum abstraction required by the load algorithm.
+/// The four common load algorithms simply provide remote IP addresses
+/// to use the LoadBalance structure. The client must implement this trait.
 pub trait RpcClient {
     fn addr(&self) -> &str;
 }
 
 #[derive(Debug)]
-pub struct LoadBalance<C> where C: RpcClient {
+pub struct LoadBalance<C>
+where
+    C: RpcClient,
+{
     pub index: AtomicUsize,
     pub rpc_clients: SyncVec<Arc<C>>,
 }
 
-/// an load balance type.
+/// A load balance type.
 #[derive(Clone, Debug, Copy)]
 pub enum LoadBalanceType {
     /// RPC clients take turns to execute
@@ -28,7 +31,10 @@ pub enum LoadBalanceType {
     MinConnect,
 }
 
-impl<C> LoadBalance<C> where C: RpcClient {
+impl<C> LoadBalance<C>
+where
+    C: RpcClient,
+{
     pub fn new() -> Self {
         Self {
             index: AtomicUsize::new(0),
@@ -36,7 +42,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
         }
     }
 
-    /// put client,and return old client
+    /// Put a client and return the old one.
     pub async fn put(&self, arg: C) -> Option<Arc<C>> {
         let arg = Some(Arc::new(arg));
         let addr = arg.as_deref().unwrap().addr();
@@ -84,18 +90,10 @@ impl<C> LoadBalance<C> where C: RpcClient {
 
     pub fn do_balance(&self, b: LoadBalanceType, from: &str) -> Option<Arc<C>> {
         match b {
-            LoadBalanceType::Round => {
-                self.round_pick_client()
-            }
-            LoadBalanceType::Random => {
-                self.random_pick_client()
-            }
-            LoadBalanceType::Hash => {
-                self.hash_pick_client(from)
-            }
-            LoadBalanceType::MinConnect => {
-                self.min_connect_client()
-            }
+            LoadBalanceType::Round => self.round_pick_client(),
+            LoadBalanceType::Random => self.random_pick_client(),
+            LoadBalanceType::Hash => self.hash_pick_client(from),
+            LoadBalanceType::MinConnect => self.min_connect_client(),
         }
     }
 
@@ -119,7 +117,12 @@ impl<C> LoadBalance<C> where C: RpcClient {
             }
             value
         };
-        return Some(self.rpc_clients.get((hash % length) as usize).unwrap().clone());
+        return Some(
+            self.rpc_clients
+                .get((hash % length) as usize)
+                .unwrap()
+                .clone(),
+        );
     }
 
     fn random_pick_client(&self) -> Option<Arc<C>> {
@@ -166,7 +169,7 @@ impl<C> LoadBalance<C> where C: RpcClient {
 
 #[cfg(test)]
 mod test {
-    use crate::balance::{RpcClient, LoadBalance, LoadBalanceType};
+    use crate::balance::{LoadBalance, LoadBalanceType, RpcClient};
 
     impl RpcClient for String {
         fn addr(&self) -> &str {
@@ -176,7 +179,7 @@ mod test {
 
     #[tokio::test]
     async fn test_put() {
-        let mut load: LoadBalance<String> = LoadBalance::new();
+        let load: LoadBalance<String> = LoadBalance::new();
         load.put("127.0.0.1:13000".to_string()).await;
         load.put("127.0.0.1:13001".to_string()).await;
 
@@ -186,7 +189,7 @@ mod test {
 
     #[tokio::test]
     async fn test_remove() {
-        let mut load: LoadBalance<String> = LoadBalance::new();
+        let load: LoadBalance<String> = LoadBalance::new();
         load.put("127.0.0.1:13000".to_string()).await;
         load.put("127.0.0.1:13001".to_string()).await;
 
@@ -196,7 +199,7 @@ mod test {
 
     #[tokio::test]
     async fn test_min_connect() {
-        let mut load: LoadBalance<String> = LoadBalance::new();
+        let load: LoadBalance<String> = LoadBalance::new();
         load.put("127.0.0.1:13000".to_string()).await;
         load.put("127.0.0.1:13001".to_string()).await;
         load.put("127.0.0.1:13002".to_string()).await;
