@@ -2,15 +2,15 @@
 extern crate async_trait;
 extern crate redis;
 
+use drpc::codec::BinCodec;
+use drpc::server::Server;
+use drpc::{BalanceManger, ManagerConfig, RegistryCenter};
+use drpc::{Error, Result};
+use redis::AsyncCommands;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use drpc::{BalanceManger, RegistryCenter, ManagerConfig};
-use drpc::server::Server;
-use redis::AsyncCommands;
 use tokio::time::sleep;
-use drpc::codec::BinCodec;
-use drpc::{Error,Result};
 
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
@@ -39,7 +39,8 @@ impl RedisCenter {
     pub fn new() -> Self {
         Self {
             server_prefix: "service:".to_string(),
-            c: redis::Client::open("redis://127.0.0.1:6379".to_string()).expect("connect redis://127.0.0.1:6379"),
+            c: redis::Client::open("redis://127.0.0.1:6379".to_string())
+                .expect("connect redis://127.0.0.1:6379"),
         }
     }
 }
@@ -48,16 +49,25 @@ impl RedisCenter {
 impl RegistryCenter for RedisCenter {
     async fn pull(&self) -> HashMap<String, Vec<String>> {
         let mut m = HashMap::new();
-        let l =  self.c.get_async_connection().await;
-        if let Ok(mut l)=l{
-            if let Ok(v) = l.keys::<&str, Vec<String>>(&format!("{}*", self.server_prefix)).await {
+        let l = self.c.get_async_connection().await;
+        if let Ok(mut l) = l {
+            if let Ok(v) = l
+                .keys::<&str, Vec<String>>(&format!("{}*", self.server_prefix))
+                .await
+            {
                 for service in v {
-                    if let Ok(list) = l.hgetall::<&str, HashMap<String, String>>(service.as_str()).await {
+                    if let Ok(list) = l
+                        .hgetall::<&str, HashMap<String, String>>(service.as_str())
+                        .await
+                    {
                         let mut data = Vec::with_capacity(list.len());
                         for (k, _) in list {
                             data.push(k);
                         }
-                        m.insert(service.trim_start_matches(&self.server_prefix).to_string(), data);
+                        m.insert(
+                            service.trim_start_matches(&self.server_prefix).to_string(),
+                            data,
+                        );
                     }
                 }
             }
@@ -66,23 +76,33 @@ impl RegistryCenter for RedisCenter {
     }
 
     async fn push(&self, service: String, addr: String, ex: Duration) -> Result<()> {
-        let l =  self.c.get_async_connection().await;
-        if let Ok(mut l) = l{
-            l.hset::<String, String, String, ()>(format!("{}{}", self.server_prefix, &service), addr.to_string(), addr.to_string()).await.map_err(|e|Error::from(e.to_string()))?;
-            l.expire::<String, ()>(format!("{}{}", &self.server_prefix, service), ex.as_secs() as usize).await.map_err(|e|Error::from(e.to_string()))?;
+        let l = self.c.get_async_connection().await;
+        if let Ok(mut l) = l {
+            l.hset::<String, String, String, ()>(
+                format!("{}{}", self.server_prefix, &service),
+                addr.to_string(),
+                addr.to_string(),
+            )
+            .await
+            .map_err(|e| Error::from(e.to_string()))?;
+            l.expire::<String, ()>(
+                format!("{}{}", &self.server_prefix, service),
+                ex.as_secs() as usize,
+            )
+            .await
+            .map_err(|e| Error::from(e.to_string()))?;
         }
         return Ok(());
     }
 }
 
-
 async fn spawn_server(manager: Arc<BalanceManger<BinCodec>>) {
     tokio::spawn(async move {
-        manager.spawn_push("test".to_string(), "127.0.0.1:10000".to_string()).await;
+        manager
+            .spawn_push("test".to_string(), "127.0.0.1:10000".to_string())
+            .await;
     });
     let mut s = Server::default();
-    s.register_fn("handle", |arg:i32|async move{
-        Ok(arg+1)
-    });
+    s.register_fn("handle", |arg: i32| async move { Ok(arg + 1) });
     s.serve("127.0.0.1:10000").await;
 }

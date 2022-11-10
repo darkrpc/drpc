@@ -1,20 +1,21 @@
+use dark_std::err;
+use dark_std::errors::Result;
+use dark_std::sync::SyncHashMap;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use dark_std::err;
+use tokio::time::sleep;
+
 use crate::balance::{LoadBalance, LoadBalanceType};
 use crate::client::Client;
-use dark_std::errors::Result;
-use dark_std::sync::{SyncHashMap};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use tokio::time::sleep;
 use crate::codec::Codec;
 
-/// to fetch remote service addr list
+/// To fetch remote service addr list
 #[async_trait]
 pub trait RegistryCenter: Sync + Send {
-    ///fetch [service]Vec<addr>
+    /// Fetch [service]Vec<addr>
     async fn pull(&self) -> HashMap<String, Vec<String>>;
     async fn push(&self, service: String, addr: String, ex: Duration) -> Result<()>;
 }
@@ -48,9 +49,7 @@ impl Default for ManagerConfig {
     }
 }
 
-
-/// this is a connect manager.
-/// Accepts a server addresses list，make a client list.
+/// A connect manager that accepts a server addresses and make a client list.
 pub struct BalanceManger<C: Codec> {
     pub config: ManagerConfig,
     pub clients: SyncHashMap<String, LoadBalance<Client<C>>>,
@@ -58,7 +57,10 @@ pub struct BalanceManger<C: Codec> {
 }
 
 impl<C: Codec> BalanceManger<C> {
-    pub fn new<F>(cfg: ManagerConfig, f: F) -> Arc<Self> where F: RegistryCenter + 'static {
+    pub fn new<F>(cfg: ManagerConfig, f: F) -> Arc<Self>
+    where
+        F: RegistryCenter + 'static,
+    {
         Arc::new(Self {
             config: cfg,
             clients: SyncHashMap::new(),
@@ -108,43 +110,52 @@ impl<C: Codec> BalanceManger<C> {
         return Ok(());
     }
 
-    /// spawn an loop pull
+    /// Spawn an loop pull
     pub async fn spawn_pull(&self) {
         loop {
             let r = self.pull().await;
             if r.is_err() {
-                log::error!("service fetch fail:{}",r.err().unwrap());
+                log::error!("service fetch fail:{}", r.err().unwrap());
             }
             sleep(self.config.interval).await;
         }
     }
 
-    /// push addr into register once
+    /// Push addr into register once
     pub async fn push(&self, service: String, addr: String) -> Result<()> {
-        self.fetcher.push(service.clone(), addr.clone(), self.config.interval.clone() * 2).await
+        self.fetcher
+            .push(
+                service.clone(),
+                addr.clone(),
+                self.config.interval.clone() * 2,
+            )
+            .await
     }
 
-    /// spawn an loop push
+    /// Spawn an loop push
     pub async fn spawn_push(&self, service: String, addr: String) {
         loop {
             let r = self.push(service.clone(), addr.clone()).await;
             if r.is_err() {
-                log::error!("service fetch fail:{}",r.err().unwrap());
+                log::error!("service fetch fail:{}", r.err().unwrap());
             }
             sleep(self.config.interval).await;
         }
     }
 
-    pub async fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp> where Arg: Serialize, Resp: DeserializeOwned {
-        return match self.clients.get(service)
-            .ok_or(err!("no service '{}' find!",service))?
-            .do_balance(self.config.balance, service) {
-            None => {
-                Err(err!("no service '{}' find!",service))
-            }
-            Some(c) => {
-                c.call(func, arg).await
-            }
+    pub async fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp>
+    where
+        Arg: Serialize,
+        Resp: DeserializeOwned,
+    {
+        return match self
+            .clients
+            .get(service)
+            .ok_or(err!("no service '{}' find!", service))?
+            .do_balance(self.config.balance, service)
+        {
+            None => Err(err!("no service '{}' find!", service)),
+            Some(c) => c.call(func, arg).await,
         };
     }
 }

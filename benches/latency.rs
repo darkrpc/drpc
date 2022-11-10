@@ -7,21 +7,21 @@ extern crate test;
 #[macro_use]
 extern crate tokio;
 
+use drpc::client::Client;
+use drpc::codec::BinCodec;
+use drpc::server::Server;
 use std::sync::mpsc::channel;
 use std::thread::sleep;
 use std::time::Duration;
 use test::Bencher;
-use drpc::client::Client;
-use drpc::codec::BinCodec;
-use drpc::server::Server;
-
 
 #[cfg(test)]
 #[bench]
 fn latency(bencher: &mut Bencher) {
     let rt_server = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .build().unwrap();
+        .build()
+        .unwrap();
     rt_server.spawn(async {
         pub async fn handle(req: i32) -> dark_std::errors::Result<i32> {
             Ok(req + 1)
@@ -32,10 +32,11 @@ fn latency(bencher: &mut Bencher) {
         println!("rpc served");
     });
     let (s, r) = channel();
-    std::thread::spawn(move ||{
+    std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
-            .build().unwrap();
+            .build()
+            .unwrap();
         rt.block_on(async {
             sleep(Duration::from_secs(1));
             let mut c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();

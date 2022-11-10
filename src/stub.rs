@@ -1,19 +1,20 @@
-use std::future::Future;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
-use log::{error, debug};
+use dark_std::errors::Error;
 use dark_std::errors::Result;
 use dark_std::sync::map_hash::SyncHashMap;
+use log::{debug, error};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use crate::codec::{Codec};
-use crate::frame::{Frame};
-use crate::server::Stub;
-use dark_std::errors::Error;
+use std::future::Future;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 
-/// and the client request parameters are packaged into a network message,
-/// which is then sent to the server remotely over the network
+use crate::codec::Codec;
+use crate::frame::Frame;
+use crate::server::Stub;
+
+/// Pack the client request parameters into a network message,
+/// which is then sent to the server remotely over the network.
 #[derive(Debug)]
 pub struct ClientStub {
     pub timeout: Option<Duration>,
@@ -28,10 +29,17 @@ impl ClientStub {
         }
     }
 
-    pub async fn call_frame<C: Codec, Arg: Serialize, Resp: DeserializeOwned, F, Transport>(&self, method: &str, arg: Arg, codec: &C,  transport: Transport) -> Result<Resp>
-        where
-            F: Future<Output=Frame>,
-            Transport: FnOnce(Frame) -> F {
+    pub async fn call_frame<C: Codec, Arg: Serialize, Resp: DeserializeOwned, F, Transport>(
+        &self,
+        method: &str,
+        arg: Arg,
+        codec: &C,
+        transport: Transport,
+    ) -> Result<Resp>
+    where
+        F: Future<Output = Frame>,
+        Transport: FnOnce(Frame) -> F,
+    {
         let mut arg_data = method.to_string().into_bytes();
         arg_data.push('\n' as u8);
         arg_data.extend(codec.encode(arg)?);
@@ -63,7 +71,16 @@ impl ClientStub {
         }
     }
 
-    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned, S>(&self, method: &str, arg: Arg, codec: &C, mut stream: S) -> Result<Resp> where S: AsyncRead + AsyncWrite + Unpin {
+    pub async fn call<C: Codec, Arg: Serialize, Resp: DeserializeOwned, S>(
+        &self,
+        method: &str,
+        arg: Arg,
+        codec: &C,
+        mut stream: S,
+    ) -> Result<Resp>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         self.call_frame(method, arg, codec, move |req_buf: Frame| async move {
             let id = req_buf.id;
             let data = req_buf.finish(id);
@@ -80,7 +97,9 @@ impl ClientStub {
             }
             loop {
                 // deserialize the rsp
-                let rsp_frame = Frame::decode_from(&mut stream).await.map_err(|e| Error::from(e));
+                let rsp_frame = Frame::decode_from(&mut stream)
+                    .await
+                    .map_err(|e| Error::from(e));
                 if rsp_frame.is_err() {
                     return Frame {
                         id,
@@ -106,11 +125,12 @@ impl ClientStub {
                     }
                 }
             }
-        }).await
+        })
+        .await
     }
 }
 
-/// Receives the message sent by the client, unpacks the me ssage, and invokes the local method.
+/// Receives the message sent by the client, unpacks the message, and invokes the local method.
 pub struct ServerStub {}
 
 impl ServerStub {
@@ -118,7 +138,12 @@ impl ServerStub {
         Self {}
     }
 
-    pub async fn call_frame<C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, req: Frame) -> Frame {
+    pub async fn call_frame<C: Codec>(
+        &self,
+        stubs: &SyncHashMap<String, Box<dyn Stub<C>>>,
+        codec: &C,
+        req: Frame,
+    ) -> Frame {
         let mut rsp = Frame::new();
         let payload = req.get_payload();
         let method = {
@@ -132,7 +157,9 @@ impl ServerStub {
                 method.push(*x as char);
             }
             if !find_end {
-                let _=rsp.write_all("not find '\n' end of method!".as_bytes()).await;
+                let _ = rsp
+                    .write_all("not find '\n' end of method!".as_bytes())
+                    .await;
                 rsp.ok = 0;
                 return rsp;
             }
@@ -140,7 +167,9 @@ impl ServerStub {
         };
         let stub = stubs.get(&method);
         if stub.is_none() {
-            let _=rsp.write_all(format!("method='{}' not find!", method).as_bytes()).await;
+            let _ = rsp
+                .write_all(format!("method='{}' not find!", method).as_bytes())
+                .await;
             rsp.ok = 0;
             return rsp;
         }
@@ -148,17 +177,24 @@ impl ServerStub {
         let body = &payload[(method.len() + 1)..];
         let r = stub.accept(body, codec).await;
         if let Err(e) = r {
-            let _=rsp.write_all(e.to_string().as_bytes()).await;
+            let _ = rsp.write_all(e.to_string().as_bytes()).await;
             rsp.ok = 0;
             return rsp;
         }
         let r = r.unwrap();
-        let _=rsp.write_all(&r).await;
+        let _ = rsp.write_all(&r).await;
         rsp.ok = 1;
         rsp
     }
 
-    pub async fn call<S, C: Codec>(&self, stubs: &SyncHashMap<String, Box<dyn Stub<C>>>, codec: &C, mut stream: S) where S: AsyncRead + AsyncWrite + Unpin {
+    pub async fn call<S, C: Codec>(
+        &self,
+        stubs: &SyncHashMap<String, Box<dyn Stub<C>>>,
+        codec: &C,
+        mut stream: S,
+    ) where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         // the read half of the stream
         loop {
             let req = match Frame::decode_from(&mut stream).await {
@@ -179,7 +215,7 @@ impl ServerStub {
             let data = rsp.finish(id);
             debug!("rsp: id={}", id);
             // send the result back to client
-            let _=stream.write(&data).await;
+            let _ = stream.write(&data).await;
         }
     }
 }

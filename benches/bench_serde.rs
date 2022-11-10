@@ -1,8 +1,8 @@
 #![feature(test)]
-extern crate test;
 extern crate serde;
 extern crate serde_json;
-use serde::{Serialize, Deserialize};
+extern crate test;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct A {
