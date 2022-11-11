@@ -15,20 +15,24 @@ impl RpcClient for C {
 }
 #[bench]
 fn bench_balance(b: &mut test::Bencher) {
-    block_on(async{
+    block_on(async {
         let load = LoadBalance::<C>::new();
         load.put(C {
             addr: "127.0.0.1:13000".to_string(),
-        }).await;
+        })
+        .await;
         load.put(C {
             addr: "127.0.0.1:13001".to_string(),
-        }).await;
+        })
+        .await;
         load.put(C {
             addr: "127.0.0.1:13002".to_string(),
-        }).await;
+        })
+        .await;
         load.put(C {
             addr: "127.0.0.1:13003".to_string(),
-        }).await;
+        })
+        .await;
         b.iter(|| {
             load.do_balance(LoadBalanceType::Round, "");
         });

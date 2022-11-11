@@ -11,8 +11,8 @@ pub trait RpcClient {
 
 #[derive(Debug)]
 pub struct LoadBalance<C>
-    where
-        C: RpcClient,
+where
+    C: RpcClient,
 {
     pub index: AtomicUsize,
     pub rpc_clients: SyncVec<Arc<C>>,
@@ -32,8 +32,8 @@ pub enum LoadBalanceType {
 }
 
 impl<C> LoadBalance<C>
-    where
-        C: RpcClient,
+where
+    C: RpcClient,
 {
     pub fn new() -> Self {
         Self {
