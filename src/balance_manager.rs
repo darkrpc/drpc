@@ -159,9 +159,3 @@ impl<C: Codec> BalanceManger<C> {
         };
     }
 }
-
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test_fetch() {}
-}
