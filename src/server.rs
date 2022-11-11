@@ -115,7 +115,7 @@ impl<C: Codec + 'static> Server<C> {
     where
         H: Stub<C>,
     {
-        self.handles.insert(name.to_owned(), Box::new(handle)).await;
+        self.handles.insert(name.to_owned(), Box::new(handle));
     }
 
     /// Register a `register_box_future` into the server.

@@ -72,7 +72,7 @@ impl<C: Codec> BalanceManger<C> {
     pub async fn pull(&self) -> Result<()> {
         let addrs = self.fetcher.pull().await;
         if addrs.is_empty() {
-            self.clients.clear().await;
+            self.clients.clear();
         }
         for (s, addrs) in addrs {
             let balance = self.clients.get(&s);
@@ -80,7 +80,7 @@ impl<C: Codec> BalanceManger<C> {
                 for addr in &addrs {
                     if !clients.contains(addr) {
                         let c = Client::dial(addr).await?;
-                        clients.put(c).await;
+                        clients.put(c);
                     }
                 }
                 let mut removes = vec![];
@@ -90,7 +90,7 @@ impl<C: Codec> BalanceManger<C> {
                     }
                 }
                 for x in removes {
-                    if let Some(client) = clients.remove(x).await {
+                    if let Some(client) = clients.remove(x) {
                         if Arc::strong_count(&client) <= 1 {
                             if let Ok(mut client) = Arc::try_unwrap(client) {
                                 client.shutdown().await;
@@ -102,9 +102,9 @@ impl<C: Codec> BalanceManger<C> {
                 let clients = LoadBalance::new();
                 for x in addrs {
                     let c = Client::dial(&x).await?;
-                    clients.put(c).await;
+                    clients.put(c);
                 }
-                self.clients.insert(s, clients).await;
+                self.clients.insert(s, clients);
             }
         }
         return Ok(());

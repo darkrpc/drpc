@@ -11,8 +11,8 @@ pub trait RpcClient {
 
 #[derive(Debug)]
 pub struct LoadBalance<C>
-where
-    C: RpcClient,
+    where
+        C: RpcClient,
 {
     pub index: AtomicUsize,
     pub rpc_clients: SyncVec<Arc<C>>,
@@ -32,8 +32,8 @@ pub enum LoadBalanceType {
 }
 
 impl<C> LoadBalance<C>
-where
-    C: RpcClient,
+    where
+        C: RpcClient,
 {
     pub fn new() -> Self {
         Self {
@@ -43,15 +43,15 @@ where
     }
 
     /// Put a client and return the old one.
-    pub async fn put(&self, arg: C) -> Option<Arc<C>> {
+    pub fn put(&self, arg: C) -> Option<Arc<C>> {
         let arg = Some(Arc::new(arg));
         let addr = arg.as_deref().unwrap().addr();
         let mut idx = 0;
         for x in &self.rpc_clients {
             if x.addr().eq(addr) {
-                let rm = self.rpc_clients.remove(idx).await;
+                let rm = self.rpc_clients.remove(idx);
                 if rm.is_none() {
-                    self.rpc_clients.push(arg.unwrap()).await;
+                    self.rpc_clients.push(arg.unwrap());
                     return None;
                 }
                 return rm;
@@ -59,16 +59,16 @@ where
             idx += 1;
         }
         if let Some(arg) = arg {
-            self.rpc_clients.push(arg).await;
+            self.rpc_clients.push(arg);
         }
         return None;
     }
 
-    pub async fn remove(&self, address: &str) -> Option<Arc<C>> {
+    pub fn remove(&self, address: &str) -> Option<Arc<C>> {
         let mut idx = 0;
         for x in &self.rpc_clients {
             if x.addr().eq(address) {
-                return self.rpc_clients.remove(idx).await;
+                return self.rpc_clients.remove(idx);
             }
             idx += 1;
         }
@@ -84,8 +84,8 @@ where
         return false;
     }
 
-    pub async fn clear(&self) {
-        self.rpc_clients.clear().await;
+    pub fn clear(&self) {
+        self.rpc_clients.clear();
     }
 
     pub fn do_balance(&self, b: LoadBalanceType, from: &str) -> Option<Arc<C>> {

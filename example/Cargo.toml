@@ -20,7 +20,7 @@ path = "src/main_set_frame_size.rs"
 [dependencies]
 async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }
-drpc = { version = "0.1", path = "../" }
+drpc = { version = "0.2", path = "../" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bincode = "1"
