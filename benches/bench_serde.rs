@@ -18,6 +18,6 @@ fn bench_bincode(b: &mut test::Bencher) {
             name: "".to_string(),
         };
         let a = serde_json::to_string(&a).unwrap();
-        let b: A = serde_json::from_str(&a).unwrap();
+        let _b: A = serde_json::from_str(&a).unwrap();
     });
 }

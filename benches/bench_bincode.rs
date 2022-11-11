@@ -18,6 +18,6 @@ fn bench_bincode(b: &mut test::Bencher) {
             name: "".to_string(),
         };
         let a = bincode::serialize(&a).unwrap();
-        let b: A = bincode::deserialize(&a).unwrap();
+        let _b: A = bincode::deserialize(&a).unwrap();
     });
 }
