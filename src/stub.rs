@@ -91,42 +91,49 @@ impl ClientStub {
                     data: e.to_string().into_bytes(),
                 };
             }
-            let mut time_start = None;
-            if self.timeout.is_some() {
-                time_start = Some(std::time::Instant::now());
-            }
-            loop {
-                // deserialize the rsp
-                let rsp_frame = Frame::decode_from(&mut stream)
-                    .await
-                    .map_err(|e| Error::from(e));
-                if rsp_frame.is_err() {
+            let timeout = self.get_timeout();
+            let v = tokio::time::timeout(timeout, async {
+                loop {
+                    // deserialize the rsp
+                    let rsp_frame = Frame::decode_from(&mut stream)
+                        .await
+                        .map_err(|e| Error::from(e));
+                    if rsp_frame.is_err() {
+                        return Frame {
+                            id,
+                            ok: 0,
+                            data: rsp_frame.err().unwrap().to_string().into_bytes(),
+                        };
+                    }
+                    let rsp_frame = rsp_frame.unwrap();
+                    // discard the rsp that is is not belong to us
+                    if rsp_frame.id == id {
+                        debug!("get response id = {}", id);
+                        return rsp_frame;
+                    }
+                }
+            })
+            .await;
+            match v {
+                Ok(v) => v,
+                Err(_e) => {
                     return Frame {
                         id,
                         ok: 0,
-                        data: rsp_frame.err().unwrap().to_string().into_bytes(),
+                        data: "rpc call timeout!".to_string().into_bytes(),
                     };
-                }
-                let rsp_frame = rsp_frame.unwrap();
-                // discard the rsp that is is not belong to us
-                if rsp_frame.id == id {
-                    debug!("get response id = {}", id);
-                    return rsp_frame;
-                }
-                if let Some(timeout) = self.timeout {
-                    if let Some(time_start) = &time_start {
-                        if time_start.elapsed() > timeout {
-                            return Frame {
-                                id,
-                                ok: 0,
-                                data: "rpc call timeout!".to_string().into_bytes(),
-                            };
-                        }
-                    }
                 }
             }
         })
         .await
+    }
+
+    pub fn get_timeout(&self) -> Duration {
+        if let Some(t) = &self.timeout {
+            t.clone()
+        } else {
+            Duration::from_secs(30)
+        }
     }
 }
 
