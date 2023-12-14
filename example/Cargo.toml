@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "redis_registry"
-path = "src/redis_registry.rs"
+name = "main_bincode"
+path = "src/main_bincode.rs"
 [[bin]]
 name = "main_json"
 path = "src/main_json.rs"
@@ -15,6 +15,9 @@ path = "src/main_bson.rs"
 [[bin]]
 name = "main_set_frame_size"
 path = "src/main_set_frame_size.rs"
+[[bin]]
+name = "redis_registry"
+path = "src/redis_registry.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
