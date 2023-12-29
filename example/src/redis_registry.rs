@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate async_trait;
 extern crate redis;
 
 use drpc::codec::BinCodec;
@@ -15,7 +13,7 @@ use tokio::time::sleep;
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
 async fn main() {
-    let manager = BalanceManger::<BinCodec>::new(ManagerConfig::default(), RedisCenter::new());
+    let manager = BalanceManger::new::<BinCodec>(ManagerConfig::default(), RedisCenter::new());
     let m_clone = manager.clone();
     tokio::spawn(async move {
         spawn_server(m_clone).await;
@@ -45,7 +43,6 @@ impl RedisCenter {
     }
 }
 
-#[async_trait]
 impl RegistryCenter for RedisCenter {
     async fn pull(&self) -> HashMap<String, Vec<String>> {
         let mut m = HashMap::new();
@@ -83,20 +80,20 @@ impl RegistryCenter for RedisCenter {
                 addr.to_string(),
                 addr.to_string(),
             )
-            .await
-            .map_err(|e| Error::from(e.to_string()))?;
+                .await
+                .map_err(|e| Error::from(e.to_string()))?;
             l.expire::<String, ()>(
                 format!("{}{}", &self.server_prefix, service),
                 ex.as_secs() as usize,
             )
-            .await
-            .map_err(|e| Error::from(e.to_string()))?;
+                .await
+                .map_err(|e| Error::from(e.to_string()))?;
         }
         return Ok(());
     }
 }
 
-async fn spawn_server(manager: Arc<BalanceManger<BinCodec>>) {
+async fn spawn_server(manager: Arc<BalanceManger<BinCodec, RedisCenter>>) {
     tokio::spawn(async move {
         manager
             .spawn_push("test".to_string(), "127.0.0.1:10000".to_string())

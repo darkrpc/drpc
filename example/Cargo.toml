@@ -21,7 +21,6 @@ path = "src/redis_registry.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }
 drpc = { version = "0.2", path = "../" }
 serde = { version = "1", features = ["derive"] }
