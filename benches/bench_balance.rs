@@ -19,20 +19,16 @@ fn bench_balance(b: &mut test::Bencher) {
         let load = LoadBalance::<C>::new();
         load.put(C {
             addr: "127.0.0.1:13000".to_string(),
-        })
-        .await;
+        });
         load.put(C {
             addr: "127.0.0.1:13001".to_string(),
-        })
-        .await;
+        });
         load.put(C {
             addr: "127.0.0.1:13002".to_string(),
-        })
-        .await;
+        });
         load.put(C {
             addr: "127.0.0.1:13003".to_string(),
-        })
-        .await;
+        });
         b.iter(|| {
             load.do_balance(LoadBalanceType::Round, "");
         });
