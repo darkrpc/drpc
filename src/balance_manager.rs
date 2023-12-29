@@ -57,7 +57,7 @@ pub struct BalanceManger<C: Codec, Registry: RegistryCenter> {
 }
 
 impl<C: Codec, Registry: RegistryCenter> BalanceManger<C, Registry> {
-    pub fn new<F>(cfg: ManagerConfig, f: Registry) -> Arc<Self>
+    pub fn new(cfg: ManagerConfig, f: Registry) -> Arc<Self>
     {
         Arc::new(Self {
             config: cfg,

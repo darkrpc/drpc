@@ -13,7 +13,7 @@ use tokio::time::sleep;
 /// docker run -it -d --name redis -p 6379:6379 redis
 #[tokio::main]
 async fn main() {
-    let manager = BalanceManger::new::<BinCodec>(ManagerConfig::default(), RedisCenter::new());
+    let manager = BalanceManger::new(ManagerConfig::default(), RedisCenter::new());
     let m_clone = manager.clone();
     tokio::spawn(async move {
         spawn_server(m_clone).await;
