@@ -18,7 +18,7 @@ async fn main() {
         let c = Client::<BinCodec>::dial("127.0.0.1:10000").await.unwrap();
         println!("dial success");
         let resp: i32 = c.call("handle", 1).await.unwrap();
-        println!("resp=>>>>>>>>>>>>>> :{}", resp);
+        println!("resp=>>>>>>>>>>>>>> :{:?}", resp);
         exit(0);
     });
     let mut s = Server::<BinCodec>::new();
