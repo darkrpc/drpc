@@ -13,7 +13,7 @@ use crate::client::Client;
 use crate::codec::Codec;
 
 /// To fetch remote service addr list
-#[async_trait]
+
 pub trait RegistryCenter: Sync + Send {
     /// Fetch [service]Vec<addr>
     async fn pull(&self) -> HashMap<String, Vec<String>>;
@@ -50,16 +50,14 @@ impl Default for ManagerConfig {
 }
 
 /// A connect manager that accepts a server addresses and make a client list.
-pub struct BalanceManger<C: Codec> {
+pub struct BalanceManger<C: Codec, Registry: RegistryCenter> {
     pub config: ManagerConfig,
     pub clients: SyncHashMap<String, LoadBalance<Client<C>>>,
-    pub fetcher: Arc<dyn RegistryCenter>,
+    pub fetcher: Arc<Registry>,
 }
 
-impl<C: Codec> BalanceManger<C> {
-    pub fn new<F>(cfg: ManagerConfig, f: F) -> Arc<Self>
-    where
-        F: RegistryCenter + 'static,
+impl<C: Codec, Registry: RegistryCenter> BalanceManger<C, Registry> {
+    pub fn new<F>(cfg: ManagerConfig, f: Registry) -> Arc<Self>
     {
         Arc::new(Self {
             config: cfg,
@@ -144,9 +142,9 @@ impl<C: Codec> BalanceManger<C> {
     }
 
     pub async fn call<Arg, Resp>(&self, service: &str, func: &str, arg: Arg) -> Result<Resp>
-    where
-        Arg: Serialize,
-        Resp: DeserializeOwned,
+        where
+            Arg: Serialize,
+            Resp: DeserializeOwned,
     {
         return match self
             .clients

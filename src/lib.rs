@@ -1,10 +1,4 @@
-extern crate serde;
-extern crate tokio;
-#[macro_use]
-extern crate async_trait;
-extern crate log;
-extern crate rand;
-
+#![allow(async_fn_in_trait)]
 pub mod balance;
 pub mod balance_manager;
 pub mod client;
