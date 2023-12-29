@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - stable
+          - 1.75.0
           - nightly
         os:
           - ubuntu-latest
